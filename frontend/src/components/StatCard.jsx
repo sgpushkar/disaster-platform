@@ -39,7 +39,7 @@ export default function StatCard({ title, value, unit, icon: Icon, riskLevel, su
         </div>
 
         {Icon && (
-          <div className="h-10 w-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 group-hover:text-amber-400 group-hover:border-amber-500/30 transition-all">
+          <div className="h-10 w-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-zinc-300 group-hover:text-red-400 group-hover:border-red-500/30 transition-all">
             {typeof Icon === 'function' || typeof Icon === 'object' ? <Icon className="h-5 w-5" /> : Icon}
           </div>
         )}

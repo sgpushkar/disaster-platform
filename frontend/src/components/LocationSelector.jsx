@@ -73,8 +73,8 @@ export default function LocationSelector({ onLocationChange }) {
       <div className="flex items-center gap-2">
         {status === 'requesting' && (
           <span className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-500" />
-            Acquiring sector...
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-red-500" />
+            Detecting...
           </span>
         )}
 
@@ -82,11 +82,11 @@ export default function LocationSelector({ onLocationChange }) {
           <button
             onClick={() => setShowCityPicker(!showCityPicker)}
             className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg
-              bg-slate-850 border border-slate-700/80 text-amber-400 hover:border-amber-500/40 transition-all shadow-sm"
+              bg-slate-850 border border-slate-700 text-zinc-200 hover:border-red-500/50 transition-all shadow-sm"
           >
-            <Navigation className="h-3 w-3 text-amber-400" />
-            <span className="max-w-[130px] truncate font-semibold text-slate-200">{location.name}</span>
-            <span className="text-amber-500/60 ml-0.5">▾</span>
+            <Navigation className="h-3 w-3 text-red-500" />
+            <span className="max-w-[130px] truncate font-semibold text-white">{location.name}</span>
+            <span className="text-zinc-500 ml-0.5">▾</span>
           </button>
         )}
 
@@ -94,11 +94,11 @@ export default function LocationSelector({ onLocationChange }) {
           <button
             onClick={() => setShowCityPicker(!showCityPicker)}
             className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg
-              bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 transition-all"
+              bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-all"
           >
             <AlertCircle className="h-3 w-3" />
             Select Sector
-            <span className="text-amber-500/60 ml-0.5">▾</span>
+            <span className="text-red-500/60 ml-0.5">▾</span>
           </button>
         )}
 
@@ -106,9 +106,9 @@ export default function LocationSelector({ onLocationChange }) {
           <button
             onClick={requestGeolocation}
             className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg
-              bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 transition-all"
+              bg-slate-800 border border-slate-700 text-zinc-300 hover:bg-slate-700 transition-all"
           >
-            <MapPin className="h-3 w-3 text-amber-400" />
+            <MapPin className="h-3 w-3 text-red-500" />
             Detect Sector
           </button>
         )}
@@ -116,8 +116,8 @@ export default function LocationSelector({ onLocationChange }) {
 
       {/* Sector picker dropdown */}
       {showCityPicker && (
-        <div className="absolute top-full mt-2 left-0 z-50 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 w-52 backdrop-blur-xl">
-          <p className="text-[10px] font-mono text-slate-500 uppercase px-2.5 py-1.5 tracking-wider">Sector Telemetry</p>
+        <div className="absolute top-full mt-2 left-0 z-50 bg-[#111114] border border-[#27272a] rounded-xl shadow-2xl p-1.5 w-52 backdrop-blur-xl">
+          <p className="text-[10px] font-mono text-zinc-500 uppercase px-2.5 py-1.5 tracking-wider">Sector Telemetry</p>
           <div className="space-y-0.5">
             {DEFAULT_CITIES.map((city) => (
               <button
@@ -125,13 +125,13 @@ export default function LocationSelector({ onLocationChange }) {
                 onClick={() => selectCity(city)}
                 className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition-colors font-mono flex items-center justify-between ${
                   location?.name === city.name 
-                    ? 'bg-amber-500/15 text-amber-300 font-semibold border border-amber-500/20' 
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-red-500/15 text-red-400 font-semibold border border-red-500/30' 
+                    : 'text-zinc-300 hover:bg-slate-800 hover:text-white'
                 }`}
               >
                 <span>{city.name}</span>
                 {location?.name === city.name && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
                 )}
               </button>
             ))}
@@ -139,7 +139,7 @@ export default function LocationSelector({ onLocationChange }) {
           {status === 'denied' && (
             <button
               onClick={() => { requestGeolocation(); setShowCityPicker(false) }}
-              className="w-full text-left px-2.5 py-2 text-xs text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors font-mono mt-1 border-t border-slate-800 pt-2"
+              className="w-full text-left px-2.5 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors font-mono mt-1 border-t border-slate-800 pt-2"
             >
               <Navigation className="h-3 w-3 inline mr-1.5" />
               Acquire GPS Location

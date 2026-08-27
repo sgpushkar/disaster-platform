@@ -70,10 +70,10 @@ export default function RiskGauge({ riskScore = 0, riskLevel = 'Low', riskTrend 
           {/* Subtle background glow */}
           <circle cx={cx} cy={cy} r={radius * 0.7} fill={cfg.color} opacity="0.03" />
 
-          {/* Carbon Instrument Track */}
+          {/* Obsidian Instrument Track */}
           <path
             d={trackPath}
-            stroke="#1a1e27"
+            stroke="#18181b"
             strokeWidth={stroke}
             fill="none"
             strokeLinecap="round"
@@ -87,7 +87,7 @@ export default function RiskGauge({ riskScore = 0, riskLevel = 'Low', riskTrend 
               y1={t.p1.y}
               x2={t.p2.x}
               y2={t.p2.y}
-              stroke="#2c3342"
+              stroke="#27272a"
               strokeWidth="1.5"
             />
           ))}
