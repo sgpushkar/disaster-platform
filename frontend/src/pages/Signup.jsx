@@ -41,12 +41,12 @@ export default function Signup() {
       >
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="mx-auto h-12 w-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm">
+          <div className="mx-auto h-12 w-12 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-500 shadow-sm">
             <Activity className="h-6 w-6" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-white">Create Operator Account</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Register for disaster risk monitoring access</p>
+            <p className="text-xs text-zinc-400 mt-0.5">Register for disaster risk monitoring access</p>
           </div>
         </div>
 
@@ -117,9 +117,9 @@ export default function Signup() {
           </button>
         </form>
 
-        <div className="pt-4 border-t border-slate-800 text-center text-xs text-slate-400">
+        <div className="pt-4 border-t border-slate-800 text-center text-xs text-zinc-400">
           Already registered?{' '}
-          <Link to="/login" className="text-amber-400 hover:underline font-medium">
+          <Link to="/login" className="text-red-400 hover:underline font-medium">
             Sign in to existing account
           </Link>
         </div>

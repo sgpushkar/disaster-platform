@@ -11,8 +11,8 @@ function AdminSection({ title, icon: Icon, children }) {
   return (
     <div className="card-panel overflow-hidden">
       <div className="px-5 py-3.5 border-b border-slate-800 flex items-center gap-2">
-        <Icon className="h-4 w-4 text-amber-400" />
-        <h2 className="text-sm font-bold font-mono uppercase text-slate-200">{title}</h2>
+        <Icon className="h-4 w-4 text-red-500" />
+        <h2 className="text-sm font-bold font-mono uppercase text-zinc-200">{title}</h2>
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -196,13 +196,13 @@ export default function Admin() {
             onClick={() => setTab(id)}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium font-mono transition-all border-b-2 -mb-px ${
               tab === id
-                ? 'border-amber-500 text-amber-400 font-bold'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-red-500 text-red-400 font-bold'
+                : 'border-transparent text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <Icon className="h-3.5 w-3.5" />
             {label}
-            <span className="text-[10px] font-mono text-slate-600">
+            <span className="text-[10px] font-mono text-zinc-500">
               ({id === 'users' ? users.length : id === 'locations' ? locations.length : alerts.length})
             </span>
           </button>
@@ -220,19 +220,19 @@ export default function Admin() {
           {users.map((u) => (
             <div key={u.id} className="card-panel p-3.5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-300">
+                <div className="h-8 w-8 rounded-lg bg-slate-800 flex items-center justify-center text-sm font-bold text-zinc-300">
                   {u.name[0]?.toUpperCase()}
                 </div>
                 <div>
                   <p className="text-sm font-medium text-white">{u.name}</p>
-                  <p className="text-xs font-mono text-slate-400">{u.email}</p>
+                  <p className="text-xs font-mono text-zinc-400">{u.email}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
                   u.role === 'admin'
-                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/25 font-bold'
-                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                    ? 'bg-red-500/10 text-red-400 border-red-500/25 font-bold'
+                    : 'bg-slate-800 text-zinc-400 border-slate-700'
                 }`}>
                   {u.role}
                 </span>

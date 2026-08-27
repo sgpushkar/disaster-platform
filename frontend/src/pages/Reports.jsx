@@ -37,7 +37,7 @@ export default function Reports() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Incident Reports & Data Export</h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/10 text-red-400 border border-red-500/20">
               AUDIT COMPLIANT
             </span>
           </div>
@@ -48,8 +48,8 @@ export default function Reports() {
       </div>
 
       {error && (
-        <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+        <div className="p-3.5 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
