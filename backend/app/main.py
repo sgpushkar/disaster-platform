@@ -12,7 +12,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.models import models  # noqa: F401 - ensures models are registered before create_all
-from app.routers import auth, weather, predict, dashboard, admin, reports
+from app.routers import auth, weather, predict, dashboard, admin, reports, risk, safety, evacuation, warnings
 
 # Create all tables on startup (SQLite - no separate migration step needed for this project)
 Base.metadata.create_all(bind=engine)
@@ -20,9 +20,13 @@ Base.metadata.create_all(bind=engine)
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 app = FastAPI(
-    title="AI-Based Disaster Prediction and Emergency Analytics API",
-    description="Flood image classification, rainfall prediction, live weather, GIS, and risk analytics.",
-    version="1.0.0",
+    title="Disaster Intel — Early Warning & Emergency Response API",
+    description=(
+        "AI-assisted early disaster warning, flood risk estimation, "
+        "safe area identification, and evacuation routing. "
+        "This system estimates risk — it does not claim to perfectly predict natural disasters."
+    ),
+    version="2.0.0",
 )
 
 app.state.limiter = limiter
@@ -36,9 +40,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Stricter rate limit on auth endpoints to slow down brute-force attempts
-auth.router.route_class  # (kept for clarity; per-route limits set below)
-
+# Core routers
 app.include_router(auth.router)
 app.include_router(weather.router)
 app.include_router(predict.router)
@@ -46,15 +48,26 @@ app.include_router(dashboard.router)
 app.include_router(admin.router)
 app.include_router(reports.router)
 
+# New early-warning pipeline routers
+app.include_router(risk.router)
+app.include_router(safety.router)
+app.include_router(evacuation.router)
+app.include_router(warnings.router)
+
 
 @app.get("/")
 def root():
-    return {"status": "online", "service": "disaster-prediction-api"}
+    return {
+        "status": "online",
+        "service": "disaster-intel-api",
+        "version": "2.0.0",
+        "description": "AI-assisted early disaster warning and emergency response platform",
+    }
 
 
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": "2.0.0"}
 
 
 import traceback
@@ -63,4 +76,8 @@ import traceback
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     traceback.print_exc()
-    return JSONResponse(status_code=500, content={"detail": f"{type(exc).__name__}: {str(exc)}"})
+    # Never expose stack traces to end users
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal server error occurred. Please try again."},
+    )
