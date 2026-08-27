@@ -11,7 +11,7 @@ function AdminSection({ title, icon: Icon, children }) {
   return (
     <div className="card-panel overflow-hidden">
       <div className="px-5 py-3.5 border-b border-slate-800 flex items-center gap-2">
-        <Icon className="h-4 w-4 text-blue-400" />
+        <Icon className="h-4 w-4 text-amber-400" />
         <h2 className="text-sm font-bold font-mono uppercase text-slate-200">{title}</h2>
       </div>
       <div className="p-5">{children}</div>
@@ -196,7 +196,7 @@ export default function Admin() {
             onClick={() => setTab(id)}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium font-mono transition-all border-b-2 -mb-px ${
               tab === id
-                ? 'border-blue-500 text-blue-300'
+                ? 'border-amber-500 text-amber-400 font-bold'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -231,7 +231,7 @@ export default function Admin() {
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
                   u.role === 'admin'
-                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/25'
+                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/25 font-bold'
                     : 'bg-slate-800 text-slate-400 border-slate-700'
                 }`}>
                   {u.role}
@@ -384,7 +384,7 @@ export default function Admin() {
                       {alert.risk_level}
                     </span>
                     <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1 ${
-                      alert.source === 'ai' ? 'text-blue-400 bg-blue-500/10' : 'text-purple-400 bg-purple-500/10'
+                      alert.source === 'ai' ? 'text-cyan-400 bg-cyan-500/10 border border-cyan-500/20' : 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
                     }`}>
                       {alert.source === 'ai' ? <Bot className="h-2.5 w-2.5" /> : <UserCog className="h-2.5 w-2.5" />}
                       {alert.source}

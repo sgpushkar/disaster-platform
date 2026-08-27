@@ -36,7 +36,7 @@ export default function Login() {
       >
         {/* Portal Header */}
         <div className="text-center space-y-2">
-          <div className="mx-auto h-12 w-12 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-sm">
+          <div className="mx-auto h-12 w-12 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm">
             <Activity className="h-6 w-6" />
           </div>
           <div>
@@ -94,7 +94,7 @@ export default function Login() {
 
         <div className="pt-4 border-t border-slate-800 text-center text-xs text-slate-400">
           Need an operator account?{' '}
-          <Link to="/signup" className="text-blue-400 hover:underline font-medium">
+          <Link to="/signup" className="text-amber-400 hover:underline font-medium">
             Register new account
           </Link>
         </div>
