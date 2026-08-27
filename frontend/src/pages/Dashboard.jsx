@@ -1,158 +1,224 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Line } from 'react-chartjs-2'
+import { Bar, Line } from 'react-chartjs-2'
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
-  LineElement, Title, Tooltip, Legend, Filler,
+  LineElement, BarElement, Title, Tooltip, Legend, Filler,
 } from 'chart.js'
-import { 
-  Thermometer, 
-  Waves, 
-  CloudRain, 
-  ShieldAlert, 
-  RefreshCw, 
-  ArrowRight, 
-  AlertTriangle, 
-  Activity, 
-  Wind, 
-  Droplets,
-  Calendar,
-  Compass
+import {
+  Thermometer, Waves, CloudRain, ShieldAlert, RefreshCw,
+  ArrowRight, AlertTriangle, Activity, Wind, Droplets,
+  MapPin, TrendingUp, Bell, Zap,
 } from 'lucide-react'
 import api from '../services/api'
 import StatCard from '../components/StatCard.jsx'
+import EarlyWarningBanner from '../components/EarlyWarningBanner.jsx'
+import RiskGauge from '../components/RiskGauge.jsx'
+import LocationSelector from '../components/LocationSelector.jsx'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
+ChartJS.register(
+  CategoryScale, LinearScale, PointElement, LineElement,
+  BarElement, Title, Tooltip, Legend, Filler
+)
+
+const RISK_COLORS = {
+  Low: '#10b981', Moderate: '#f59e0b', High: '#f97316', Critical: '#ef4444',
+}
 
 export default function Dashboard() {
   const [data, setData] = useState(null)
-  const [history, setHistory] = useState([])
+  const [riskData, setRiskData] = useState(null)
+  const [riskHistory, setRiskHistory] = useState([])
+  const [forecast, setForecast] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [dismissedBanner, setDismissedBanner] = useState(false)
+  const [location, setLocation] = useState(null)
 
-  const loadData = async (isRefresh = false) => {
+  const loadData = useCallback(async (loc = location, isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
     try {
-      const [dashRes, histRes] = await Promise.all([
-        api.get('/dashboard'),
-        api.get('/history', { params: { limit: 14 } }),
+      const activeLoc = loc || location || (() => {
+        try {
+          const saved = localStorage.getItem('disaster_intel_location')
+          return saved ? JSON.parse(saved) : null
+        } catch (_) {
+          return null
+        }
+      })()
+
+      const params = activeLoc?.lat != null ? { lat: activeLoc.lat, lon: activeLoc.lon } : {}
+
+      // If user requested a force refresh, trigger POST /weather/refresh first
+      if (isRefresh) {
+        await api.post('/weather/refresh', null, { params }).catch(() => {})
+      }
+
+      const [dashRes, riskRes, histRes, forecastRes, weatherRes] = await Promise.all([
+        api.get('/dashboard', { params }).catch((err) => {
+          console.warn('Dashboard fetch warning:', err)
+          return { data: null }
+        }),
+        api.get('/risk/current', { params }).catch((err) => {
+          console.warn('Risk current warning:', err)
+          return { data: null }
+        }),
+        api.get('/risk/history', { params: { days: 14 } }).catch(() => ({ data: [] })),
+        api.get('/weather/forecast', { params }).catch(() => ({ data: [] })),
+        api.get('/weather', { params }).catch(() => ({ data: null })),
       ])
-      setData(dashRes.data)
-      setHistory(histRes.data.reverse())
-      setError('')
+
+      const currentWeatherData = dashRes?.data?.current_weather || weatherRes?.data || null
+      const dashboardPayload = dashRes?.data || {}
+      dashboardPayload.current_weather = currentWeatherData
+
+      setData(dashboardPayload)
+      if (riskRes?.data) setRiskData(riskRes.data)
+      setRiskHistory(histRes?.data || [])
+      setForecast(forecastRes?.data || [])
+
+      if (!currentWeatherData && !riskRes?.data) {
+        setError('Weather & risk services are updating. Click Refresh to reload.')
+      } else {
+        setError('')
+      }
+      setDismissedBanner(false)
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to load dashboard data')
     } finally {
       setLoading(false)
       if (isRefresh) setRefreshing(false)
     }
-  }
+  }, [location])
+
+  const handleLocationChange = useCallback((loc) => {
+    setLocation(loc)
+    loadData(loc)
+  }, [])
 
   useEffect(() => {
     loadData()
   }, [])
 
-  const chartData = {
-    labels: history.map((h) => new Date(h.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })),
-    datasets: [
-      {
-        label: 'Risk Index (0-100)',
-        data: history.map((h) => h.risk_score ?? 0),
-        borderColor: '#3b82f6',
-        borderWidth: 2,
-        backgroundColor: (context) => {
-          const ctx = context.chart.ctx
-          const gradient = ctx.createLinearGradient(0, 0, 0, 260)
-          gradient.addColorStop(0, 'rgba(59, 130, 246, 0.25)')
-          gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)')
-          return gradient
-        },
-        fill: true,
-        tension: 0.3,
-        pointBackgroundColor: '#3b82f6',
-        pointBorderColor: '#0f172a',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
+  // Build chart data from risk history
+  const historyForChart = riskHistory.length > 0 ? riskHistory : []
+
+  const lineChartData = {
+    labels: historyForChart.map(h =>
+      new Date(h.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    ),
+    datasets: [{
+      label: 'Risk Score',
+      data: historyForChart.map(h => h.risk_score ?? 0),
+      borderColor: '#3b82f6',
+      borderWidth: 2,
+      backgroundColor: (ctx) => {
+        const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 260)
+        gradient.addColorStop(0, 'rgba(59,130,246,0.25)')
+        gradient.addColorStop(1, 'rgba(59,130,246,0)')
+        return gradient
       },
-    ],
+      fill: true, tension: 0.35,
+      pointBackgroundColor: historyForChart.map(h =>
+        RISK_COLORS[h.risk_level] || '#3b82f6'
+      ),
+      pointBorderColor: '#0f172a',
+      pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 7,
+    }],
   }
 
   const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
+    responsive: true, maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: '#0f172a',
-        titleColor: '#e2e8f0',
-        bodyColor: '#93c5fd',
-        borderColor: '#334155',
-        borderWidth: 1,
-        padding: 10,
-        cornerRadius: 8,
-        displayColors: false,
-        callbacks: {
-          label: (context) => `Risk Score: ${context.parsed.y} / 100`,
-        }
+        backgroundColor: '#0f172a', titleColor: '#e2e8f0', bodyColor: '#93c5fd',
+        borderColor: '#334155', borderWidth: 1, padding: 10, cornerRadius: 8,
+        callbacks: { label: ctx => `Risk: ${ctx.parsed.y}/100` }
       }
     },
     scales: {
-      x: {
-        grid: { color: 'rgba(51, 65, 85, 0.3)' },
-        ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 11 } },
-      },
-      y: {
-        grid: { color: 'rgba(51, 65, 85, 0.3)' },
-        ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 11 } },
-        min: 0,
-        max: 100,
-      },
+      x: { grid: { color: 'rgba(51,65,85,0.3)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(51,65,85,0.3)' }, ticks: { color: '#94a3b8', font: { size: 11 } }, min: 0, max: 100,
+        afterDataLimits: (scale) => { scale.max = 100 } },
     },
   }
+
+  const barChartData = {
+    labels: forecast.length > 0
+      ? forecast.map((d, i) => i === 0 ? 'Tomorrow' : `Day +${i + 1}`)
+      : ['Tomorrow', 'Day +2', 'Day +3', 'Day +4'],
+    datasets: [{
+      label: 'Rainfall (mm)',
+      data: forecast.length > 0 ? forecast.map(d => d.total_rainfall_mm) : [0, 0, 0, 0],
+      backgroundColor: ['rgba(59,130,246,0.7)', 'rgba(59,130,246,0.5)', 'rgba(59,130,246,0.4)', 'rgba(59,130,246,0.3)'],
+      borderColor: '#3b82f6', borderWidth: 1, borderRadius: 6,
+    }],
+  }
+
+  const barOptions = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} mm` } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(51,65,85,0.3)' }, ticks: { color: '#94a3b8', font: { size: 11 } } },
+    },
+  }
+
+  // Determine which risk data to use (prefer new /risk/current)
+  const currentScore = riskData?.risk_score ?? data?.current_risk_snapshot?.risk_score ?? data?.current_risk?.risk_score
+  const currentLevel = riskData?.risk_level ?? data?.current_risk_snapshot?.risk_level ?? data?.current_risk?.risk_level ?? 'Low'
+  const currentTrend = riskData?.risk_trend ?? data?.current_risk_snapshot?.risk_trend ?? 'UNKNOWN'
+  const currentFactors = riskData?.contributing_factors ?? []
+  const currentRec = riskData?.recommendation ?? ''
+  const locationName = riskData?.location_name ?? data?.current_weather?.location_name ?? location?.name
+
+  const showWarningBanner = !dismissedBanner && (currentLevel === 'High' || currentLevel === 'Critical')
 
   if (loading) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3">
         <div className="h-8 w-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-        <p className="text-xs font-mono text-slate-400">CONNECTING TO TELEMETRY STREAM...</p>
+        <p className="text-xs font-mono text-slate-400">LOADING DISASTER INTEL...</p>
       </div>
     )
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Top Banner / Operational Status Header */}
+
+      {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Emergency Analytics Command</h1>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Disaster Intel</h1>
             <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              LIVE MONITORING
+              LIVE
             </span>
+            {data?.active_warnings_count > 0 && (
+              <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-red-500/15 text-red-400 border border-red-500/30 animate-pulse">
+                {data.active_warnings_count} ACTIVE WARNING{data.active_warnings_count > 1 ? 'S' : ''}
+              </span>
+            )}
           </div>
-          <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
-            <span>Aggregated multi-sensor flood risk & precipitation telemetry</span>
-            <span>·</span>
-            <span className="font-mono text-slate-400">LAST SYNC: {new Date().toLocaleTimeString()}</span>
-          </p>
+          <p className="text-xs text-slate-400 mt-1">Early warning · Risk estimation · Emergency response</p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <LocationSelector onLocationChange={handleLocationChange} />
           <button
-            onClick={() => loadData(true)}
+            onClick={() => loadData(location, true)}
             disabled={refreshing}
             className="btn-secondary text-xs py-1.5 px-3"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin text-blue-400' : ''}`} />
-            <span>{refreshing ? 'Syncing...' : 'Sync Telemetry'}</span>
+            {refreshing ? 'Updating...' : 'Refresh'}
           </button>
-          
           <Link to="/predict" className="btn-primary text-xs py-1.5 px-3">
             <Activity className="h-3.5 w-3.5" />
-            <span>Run New Analysis</span>
+            Analyze Risk
           </Link>
         </div>
       </div>
@@ -164,163 +230,251 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* KPI Telemetry Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Surface Temperature"
-          value={data?.current_weather?.temperature != null ? data.current_weather.temperature.toFixed(1) : '—'}
-          unit="°C"
-          icon={Thermometer}
-          subtitle={data?.current_weather?.location_name || 'Station Online'}
-          delta={data?.current_weather ? `Wind: ${data.current_weather.wind_speed} m/s` : null}
-          delay={0}
+      {/* ── Early Warning Banner (HIGH/CRITICAL only) ── */}
+      {showWarningBanner && (
+        <EarlyWarningBanner
+          riskScore={currentScore}
+          riskLevel={currentLevel}
+          riskTrend={currentTrend}
+          locationName={locationName}
+          recommendation={currentRec}
+          onDismiss={() => setDismissedBanner(true)}
         />
-        <StatCard
-          title="Flood Image Confidence"
-          value={data?.latest_flood_prediction?.confidence != null ? data.latest_flood_prediction.confidence.toFixed(0) : '—'}
-          unit="%"
-          icon={Waves}
-          subtitle={data?.latest_flood_prediction?.prediction ? `Classification: ${data.latest_flood_prediction.prediction}` : 'No terrain scan'}
-          delay={0.05}
-        />
-        <StatCard
-          title="Rainfall Forecast"
-          value={data?.latest_rainfall_forecast?.tomorrow_mm != null ? data.latest_rainfall_forecast.tomorrow_mm.toFixed(1) : '—'}
-          unit="mm / 24h"
-          icon={CloudRain}
-          subtitle="LSTM Deep Forecast (+24h)"
-          delay={0.1}
-        />
-        <StatCard
-          title="Composite Risk Index"
-          value={data?.current_risk?.risk_score != null ? data.current_risk.risk_score.toFixed(0) : '—'}
-          unit="/100"
-          icon={ShieldAlert}
-          riskLevel={data?.current_risk?.risk_level}
-          subtitle="Fused Sensor Assessment"
-          delay={0.15}
-        />
-      </div>
+      )}
 
-      {/* Main Charts & Live Feed Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Risk Trend Chart */}
+      {/* ── Risk + Weather hero ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Risk Gauge Card */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="card-panel p-5 lg:col-span-2 flex flex-col justify-between"
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="card-panel p-5 flex flex-col items-center justify-between gap-4"
         >
-          <div className="flex items-center justify-between pb-4 mb-2 border-b border-slate-800/80">
-            <div>
-              <h2 className="text-sm font-bold uppercase tracking-wider font-mono text-slate-200">
-                14-Day Disaster Risk Timeline
-              </h2>
-              <p className="text-xs text-slate-400">Historical progression of multi-factor risk scores</p>
-            </div>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-              {history.length} Data Points
+          <div className="w-full flex items-center justify-between pb-2 border-b border-slate-800">
+            <span className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+              <ShieldAlert className="h-3.5 w-3.5 text-blue-400" />
+              Current Flood Risk
             </span>
+            <span className="text-[10px] font-mono text-slate-500">{locationName || 'Location pending'}</span>
+          </div>
+          <RiskGauge
+            riskScore={Math.round(currentScore ?? 0)}
+            riskLevel={currentLevel}
+            riskTrend={currentTrend}
+            size="lg"
+          />
+          {currentRec && (
+            <p className="text-[11px] text-slate-400 text-center leading-relaxed max-w-xs">
+              {currentRec.slice(0, 120)}{currentRec.length > 120 ? '…' : ''}
+            </p>
+          )}
+        </motion.div>
+
+        {/* Live Weather */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="card-panel p-5 space-y-3"
+        >
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <span className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+              <Droplets className="h-3.5 w-3.5 text-blue-400" />
+              Live Weather
+            </span>
+            {data?.current_weather && (
+              <span className="text-[10px] font-mono text-slate-500">
+                {new Date(data.current_weather.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
 
-          <div className="h-64 sm:h-72 w-full pt-2">
-            {history.length > 0 ? (
-              <Line data={chartData} options={chartOptions} />
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-800 rounded-lg">
-                <Activity className="h-8 w-8 text-slate-600 mb-2" />
-                <p className="text-sm text-slate-400 font-medium">No telemetry history recorded yet</p>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm">
-                  Run a risk prediction in the Predict tab to log incident scores on this timeline.
-                </p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: 'Temperature', value: data?.current_weather?.temperature != null ? `${data.current_weather.temperature.toFixed(1)}°C` : '—', icon: Thermometer, color: 'text-orange-400' },
+              { label: 'Humidity', value: data?.current_weather?.humidity != null ? `${data.current_weather.humidity}%` : '—', icon: Droplets, color: 'text-blue-400' },
+              { label: 'Rainfall', value: data?.current_weather?.rainfall != null ? `${data.current_weather.rainfall} mm` : '0 mm', icon: CloudRain, color: 'text-cyan-400' },
+              { label: 'Wind Speed', value: data?.current_weather?.wind_speed != null ? `${data.current_weather.wind_speed} m/s` : '—', icon: Wind, color: 'text-purple-400' },
+              { label: 'Pressure', value: data?.current_weather?.pressure != null ? `${data.current_weather.pressure} hPa` : '—', icon: Activity, color: 'text-indigo-400' },
+              { label: 'Location', value: data?.current_weather?.location_name || locationName || '—', icon: MapPin, color: 'text-emerald-400' },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
+                <div className="flex items-center gap-1 mb-1">
+                  <Icon className={`h-3 w-3 ${color}`} />
+                  <span className="text-[10px] font-mono text-slate-500 uppercase">{label}</span>
+                </div>
+                <p className="text-sm font-bold font-mono text-white truncate">{value}</p>
               </div>
-            )}
+            ))}
           </div>
         </motion.div>
 
-        {/* Live Weather & Recent Alerts Sidebar */}
+        {/* Contributing Factors / Active Alerts */}
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="space-y-6"
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="space-y-4"
         >
-          {/* Live Station Conditions */}
-          <div className="card-panel p-4 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <span className="text-xs font-mono uppercase font-semibold text-slate-300 flex items-center gap-1.5">
-                <Droplets className="h-3.5 w-3.5 text-blue-400" />
-                Station Telemetry
+          {/* Contributing factors */}
+          {currentFactors.length > 0 && (
+            <div className="card-panel p-4 space-y-3">
+              <span className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5 text-amber-400" />
+                Risk Factors
               </span>
-              <span className="text-[10px] font-mono text-slate-500">REALTIME</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                <span className="text-[10px] font-mono text-slate-500 uppercase">Humidity</span>
-                <p className="text-base font-bold font-mono text-white mt-0.5">
-                  {data?.current_weather?.humidity != null ? `${data.current_weather.humidity}%` : '—'}
-                </p>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                <span className="text-[10px] font-mono text-slate-500 uppercase">Wind Velocity</span>
-                <p className="text-base font-bold font-mono text-white mt-0.5">
-                  {data?.current_weather?.wind_speed != null ? `${data.current_weather.wind_speed} m/s` : '—'}
-                </p>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                <span className="text-[10px] font-mono text-slate-500 uppercase">Rain Gauge</span>
-                <p className="text-base font-bold font-mono text-white mt-0.5">
-                  {data?.current_weather?.rainfall != null ? `${data.current_weather.rainfall} mm` : '0.0 mm'}
-                </p>
-              </div>
-              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                <span className="text-[10px] font-mono text-slate-500 uppercase">Atmosphere</span>
-                <p className="text-xs font-semibold text-slate-300 mt-1 capitalize truncate">
-                  {data?.current_weather?.weather_description || 'Clear Sky'}
-                </p>
+              <div className="space-y-2">
+                {currentFactors.map((f) => (
+                  <div key={f.key} className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-mono">
+                      <span className="text-slate-300">{f.label}</span>
+                      <span className="text-blue-300">{f.delta}</span>
+                    </div>
+                    <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full transition-all duration-700"
+                        style={{ width: `${Math.min(100, f.score)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Recent Broadcast Alerts */}
+          {/* Recent alerts */}
           <div className="card-panel p-4 space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <span className="text-xs font-mono uppercase font-semibold text-slate-300 flex items-center gap-1.5">
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
+              <span className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+                <Bell className="h-3.5 w-3.5 text-amber-400" />
                 Active Alerts
               </span>
               <Link to="/alerts" className="text-[11px] text-blue-400 hover:underline flex items-center gap-0.5">
-                View All <ArrowRight className="h-3 w-3" />
+                All <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
-
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {data?.recent_alerts?.length > 0 ? (
                 data.recent_alerts.slice(0, 3).map((alert) => (
                   <div key={alert.id} className="p-2.5 rounded-lg bg-slate-950/50 border border-slate-800/60 text-xs space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold uppercase ${
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
                         alert.risk_level === 'Critical' ? 'text-red-400 bg-red-500/10' :
                         alert.risk_level === 'High' ? 'text-orange-400 bg-orange-500/10' :
                         'text-amber-400 bg-amber-500/10'
                       }`}>
-                        {alert.risk_level} Priority
+                        {alert.risk_level}
                       </span>
-                      <span className="text-[10px] font-mono text-slate-500">
+                      <span className="text-[10px] font-mono text-slate-500 shrink-0">
                         {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <p className="text-slate-300 text-xs leading-relaxed">{alert.message}</p>
+                    <p className="text-slate-300 leading-relaxed line-clamp-2">
+                      {alert.title || alert.message}
+                    </p>
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-slate-500 py-3 text-center">No active alerts broadcasted.</p>
+                <p className="text-xs text-slate-500 py-2 text-center">No active alerts.</p>
               )}
             </div>
           </div>
         </motion.div>
       </div>
+
+      {/* ── Rainfall Forecast ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="card-panel p-5"
+      >
+        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800/80">
+          <div>
+            <h2 className="text-sm font-bold font-mono uppercase text-slate-200 flex items-center gap-1.5">
+              <CloudRain className="h-4 w-4 text-blue-400" />
+              4-Day Rainfall Forecast
+            </h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Predicted precipitation — one input to the risk engine. Not a flood prediction.
+            </p>
+          </div>
+          <Link to="/predict" className="text-[11px] text-blue-400 hover:underline font-mono">
+            Run LSTM →
+          </Link>
+        </div>
+        <div className="h-44">
+          <Bar data={barChartData} options={barOptions} />
+        </div>
+      </motion.div>
+
+      {/* ── 14-Day Risk History ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="card-panel p-5"
+      >
+        <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800/80">
+          <div>
+            <h2 className="text-sm font-bold font-mono uppercase text-slate-200 flex items-center gap-1.5">
+              <TrendingUp className="h-4 w-4 text-blue-400" />
+              14-Day Risk History
+            </h2>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Historical risk scores · {riskHistory.length} data points
+            </p>
+          </div>
+          <span className="text-[10px] font-mono text-slate-600">0 = Low · 100 = Critical</span>
+        </div>
+        <div className="h-60">
+          {riskHistory.length > 0 ? (
+            <Line data={lineChartData} options={chartOptions} />
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center border border-dashed border-slate-800 rounded-lg p-6">
+              <Activity className="h-8 w-8 text-slate-700 mb-2" />
+              <p className="text-sm text-slate-500 font-medium">No history yet</p>
+              <p className="text-xs text-slate-600 mt-1">
+                Click "Analyze Risk" to compute and store the first risk snapshot.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Risk level legend */}
+        {riskHistory.length > 0 && (
+          <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-800/60 flex-wrap">
+            {Object.entries(RISK_COLORS).map(([level, color]) => (
+              <div key={level} className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+                {level}
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+
+      {/* ── Emergency Actions ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+      >
+        {[
+          { to: '/safe-areas', icon: MapPin, label: 'Find Safe Areas', desc: 'Ranked nearby shelters & hospitals', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/25 hover:border-emerald-500/50' },
+          { to: '/map', icon: Waves, label: 'Emergency Map', desc: 'View danger zones & evacuation routes', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/25 hover:border-blue-500/50' },
+          { to: '/alerts', icon: Bell, label: 'All Alerts', desc: `${data?.active_warnings_count ?? 0} active · click to view`, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/25 hover:border-amber-500/50' },
+        ].map(({ to, icon: Icon, label, desc, color, bg }) => (
+          <Link key={to} to={to}
+            className={`card-panel p-4 flex items-center gap-3 border ${bg} transition-all group`}>
+            <div className={`p-2 rounded-lg ${bg.split(' ')[0]}`}>
+              <Icon className={`h-5 w-5 ${color}`} />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors">{label}</p>
+              <p className="text-[11px] text-slate-500">{desc}</p>
+            </div>
+            <ArrowRight className={`h-4 w-4 ${color} ml-auto opacity-0 group-hover:opacity-100 transition-opacity`} />
+          </Link>
+        ))}
+      </motion.div>
     </div>
   )
 }
