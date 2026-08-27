@@ -11,6 +11,7 @@ import MapView from './pages/MapView.jsx'
 import Alerts from './pages/Alerts.jsx'
 import Reports from './pages/Reports.jsx'
 import Admin from './pages/Admin.jsx'
+import SafeAreas from './pages/SafeAreas.jsx'
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/map" element={<ProtectedRoute><MapView /></ProtectedRoute>} />
           <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+          <Route path="/safe-areas" element={<ProtectedRoute><SafeAreas /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
