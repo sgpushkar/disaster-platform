@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Env — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+dist/
+frontend/dist/
+
+# DB
+database/*.db
+
+# ML models (large Keras models are ignored, but trained .joblib files can be committed)
+ml/models/*.keras
+ml/models/*.pkl
+# backend/models/*.joblib intentionally NOT ignored — commit trained models so they deploy
+
+# Uploaded files (ephemeral, not stored in git)
+backend/uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Render / deployment artifacts
+*.log

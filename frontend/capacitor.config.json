@@ -1,0 +1,9 @@
+{
+  "appId": "com.disasterintel.app",
+  "appName": "Disaster Intel",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}
