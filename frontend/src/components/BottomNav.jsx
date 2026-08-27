@@ -47,13 +47,13 @@ export default function BottomNav() {
               >
                 <div className={`h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
                   active 
-                    ? 'bg-amber-500 text-slate-950 ring-4 ring-slate-950 shadow-amber-500/30 font-bold' 
-                    : 'bg-slate-800 text-amber-400 ring-4 ring-slate-950 hover:bg-slate-700 border border-slate-700'
+                    ? 'bg-red-600 text-white ring-4 ring-slate-950 shadow-red-600/40 font-bold' 
+                    : 'bg-slate-800 text-zinc-300 ring-4 ring-slate-950 hover:bg-slate-700 border border-slate-700'
                 }`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <span className={`text-[10px] font-mono mt-1 font-semibold ${
-                  active ? 'text-amber-400' : 'text-slate-400'
+                  active ? 'text-red-500' : 'text-zinc-400'
                 }`}>
                   {item.label}
                 </span>
@@ -66,16 +66,16 @@ export default function BottomNav() {
               key={item.path}
               to={item.path}
               className={`flex flex-col items-center justify-center flex-1 h-full py-1 transition-all active:scale-95 ${
-                active ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+                active ? 'text-red-500' : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
               <div className={`p-1 rounded-lg transition-colors ${
-                active ? 'bg-amber-500/10' : ''
+                active ? 'bg-red-500/10' : ''
               }`}>
                 <Icon className="h-5 w-5" />
               </div>
               <span className={`text-[10px] font-medium tracking-tight mt-0.5 ${
-                active ? 'font-bold text-white' : 'text-slate-400'
+                active ? 'font-bold text-white' : 'text-zinc-400'
               }`}>
                 {item.label}
               </span>

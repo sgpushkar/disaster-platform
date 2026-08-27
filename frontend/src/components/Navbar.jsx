@@ -35,20 +35,20 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
         {/* Brand */}
         <Link to="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:bg-amber-500 group-hover:text-slate-950 transition-all shadow-sm">
+          <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-500 group-hover:bg-red-600 group-hover:text-white transition-all shadow-sm">
             <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-bold tracking-wider text-white font-sans text-sm sm:text-base">DISASTER INTEL</span>
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
             </div>
-            <p className="text-[9px] font-mono text-slate-500 tracking-wider uppercase">Emergency Operations</p>
+            <p className="text-[9px] font-mono text-zinc-500 tracking-wider uppercase">Emergency Operations</p>
           </div>
         </Link>
 
         {/* Desktop navigation links */}
-        <nav className="hidden md:flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+        <nav className="hidden md:flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
           {navItems.map((item) => {
             const Icon = item.icon
             const active = location.pathname === item.path
@@ -58,8 +58,8 @@ export default function Navbar() {
                 to={item.path}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   active
-                    ? 'bg-slate-800 text-amber-400 border border-amber-500/30 shadow-sm font-semibold'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                    ? 'bg-slate-800 text-white border border-red-500/40 shadow-sm font-semibold'
+                    : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -72,8 +72,8 @@ export default function Navbar() {
               to="/admin"
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 location.pathname === '/admin'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm font-semibold'
-                  : 'text-amber-400/80 hover:text-amber-300 hover:bg-amber-500/10'
+                  ? 'bg-red-500/15 text-red-400 border border-red-500/40 shadow-sm font-semibold'
+                  : 'text-zinc-400 hover:text-red-400 hover:bg-red-500/10'
               }`}
             >
               <ShieldCheck className="h-3.5 w-3.5" />
@@ -85,11 +85,11 @@ export default function Navbar() {
         {/* User Info & Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="flex flex-col items-end">
-            <span className="text-xs font-medium text-slate-200 truncate max-w-[120px] sm:max-w-none">{user.name}</span>
+            <span className="text-xs font-medium text-zinc-200 truncate max-w-[120px] sm:max-w-none">{user.name}</span>
             <span className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded ${
               user.role === 'admin' 
-                ? 'text-amber-400 bg-amber-500/10 border border-amber-500/25 font-bold' 
-                : 'text-slate-400 bg-slate-800 border border-slate-700'
+                ? 'text-red-400 bg-red-500/10 border border-red-500/25 font-bold' 
+                : 'text-zinc-400 bg-slate-800 border border-slate-700'
             }`}>
               {user.role}
             </span>
@@ -101,7 +101,7 @@ export default function Navbar() {
               navigate('/login')
             }}
             title="Sign out"
-            className="p-1.5 sm:p-2 rounded-lg bg-slate-900 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-500/30 transition-all text-xs flex items-center gap-1.5"
+            className="p-1.5 sm:p-2 rounded-lg bg-slate-900 hover:bg-red-500/15 text-zinc-400 hover:text-red-400 border border-slate-800 hover:border-red-500/30 transition-all text-xs flex items-center gap-1.5"
           >
             <LogOut className="h-4 w-4" />
             <span className="hidden sm:inline">Logout</span>
