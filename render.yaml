@@ -17,12 +17,6 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "60"
       - key: DATABASE_URL
-        fromDatabase:
-          name: disaster-intel-db
-          property: connectionString
+        value: "SET_THIS_TO_YOUR_NEON_POSTGRES_URL"
       - key: FRONTEND_ORIGIN
         value: "http://localhost:5173"
-
-databases:
-  - name: disaster-intel-db
-    plan: free
