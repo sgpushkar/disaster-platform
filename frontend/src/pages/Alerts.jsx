@@ -77,7 +77,7 @@ export default function Alerts() {
               onClick={() => setFilter(level)}
               className={`px-3 py-1.5 rounded-lg font-mono font-medium transition-all ${
                 filter === level
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
                   : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -94,7 +94,7 @@ export default function Alerts() {
               onClick={() => setSourceFilter(src)}
               className={`px-3 py-1.5 rounded-lg font-mono font-medium transition-all flex items-center gap-1 ${
                 sourceFilter === src
-                  ? 'bg-slate-700 text-white shadow-sm'
+                  ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
                   : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -127,8 +127,8 @@ export default function Alerts() {
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-2">
-          <div className="h-7 w-7 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-          <p className="text-xs font-mono text-slate-500">LOADING ALERTS...</p>
+          <div className="h-7 w-7 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+          <p className="text-xs font-mono text-slate-500">LOADING INCIDENT ALERTS...</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="card-panel p-12 text-center space-y-2">
@@ -161,11 +161,11 @@ export default function Alerts() {
                     {/* Source badge */}
                     <span className={`px-2 py-0.5 rounded text-[10px] font-mono border flex items-center gap-1 ${
                       alert.source === 'ai'
-                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/25'
-                        : 'bg-purple-500/10 text-purple-400 border-purple-500/25'
+                        ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/25'
+                        : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
                     }`}>
                       {alert.source === 'ai' ? <Bot className="h-2.5 w-2.5" /> : <UserCog className="h-2.5 w-2.5" />}
-                      {alert.source === 'ai' ? 'AI Generated' : 'Admin Broadcast'}
+                      {alert.source === 'ai' ? 'Telemetry Sensor' : 'Command Broadcast'}
                     </span>
 
                     {alert.risk_score != null && (

@@ -7,13 +7,13 @@ import {
 import api from '../services/api'
 import RiskGauge from '../components/RiskGauge.jsx'
 
-function Section({ title, icon: Icon, iconColor = 'text-blue-400', children, defaultOpen = true }) {
+function Section({ title, icon: Icon, iconColor = 'text-amber-400', children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className="card-panel overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors"
+        className="w-full flex items-center justify-between p-4 hover:bg-slate-800/40 transition-colors"
       >
         <span className="flex items-center gap-2 text-sm font-bold font-mono uppercase text-slate-200">
           <Icon className={`h-4 w-4 ${iconColor}`} />
@@ -113,34 +113,30 @@ export default function Predict() {
     }
   }
 
-  const RISK_COLOR = {
-    Low: 'text-emerald-400', Moderate: 'text-amber-400', High: 'text-orange-400', Critical: 'text-red-400',
-  }
-
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
       {/* Header */}
       <div className="pb-4 border-b border-slate-800">
         <div className="flex items-center gap-2 mb-1">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Risk Analysis</h1>
-          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
-            AI ENGINE
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Hazard Analysis</h1>
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            AI ESTIMATION ENGINE
           </span>
         </div>
         <p className="text-xs text-slate-400">
           Environmental risk assessment using weather conditions and rainfall signals.
-          Image evidence is <strong>optional</strong> and used as a secondary supporting check.
+          Image evidence is <strong>optional</strong> and used as secondary supporting telemetry.
         </p>
       </div>
 
       {/* ── Section 1: Current Environmental Risk (Primary) ── */}
       <Section title="Current Environmental Risk" icon={ShieldAlert} defaultOpen>
         <div className="pt-4 space-y-4">
-          <div className="p-3 rounded-lg bg-blue-500/8 border border-blue-500/20 text-xs text-blue-300 leading-relaxed flex items-start gap-2">
-            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-400" />
+          <div className="p-3 rounded-lg bg-amber-500/8 border border-amber-500/20 text-xs text-amber-300 leading-relaxed flex items-start gap-2">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-400" />
             <span>
-              This computes risk from <strong>live weather + rainfall signals</strong>. 
-              No image required. Risk is an <em>estimate</em>, not a prediction of an event.
+              Calculates risk from <strong>live weather + precipitation forecast</strong>. 
+              No visual imagery required. Risk output is an <em>empirical estimate</em>.
             </span>
           </div>
 
@@ -163,16 +159,16 @@ export default function Predict() {
               {/* Contributing factors */}
               {riskResult.contributing_factors?.length > 0 && (
                 <div className="space-y-2.5">
-                  <p className="text-[11px] font-mono uppercase text-slate-500">Contributing Factors</p>
+                  <p className="text-[11px] font-mono uppercase text-slate-500">Decomposition Signals</p>
                   {riskResult.contributing_factors.map((f) => (
                     <div key={f.key}>
                       <div className="flex justify-between text-[11px] font-mono mb-1">
                         <span className="text-slate-300">{f.label}</span>
-                        <span className="text-blue-300">{f.score}/100 · {f.weight_pct}%</span>
+                        <span className="text-amber-400 font-semibold">{f.score}/100 · {f.weight_pct}%</span>
                       </div>
                       <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-blue-500 rounded-full transition-all duration-700"
+                          className="h-full bg-amber-500 rounded-full transition-all duration-700"
                           style={{ width: `${Math.min(100, f.score)}%` }}
                         />
                       </div>
