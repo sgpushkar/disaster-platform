@@ -15,7 +15,7 @@ import SafeAreas from './pages/SafeAreas.jsx'
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between">
+    <div className="min-h-screen bg-[#09090b] text-[#fafafa] flex flex-col justify-between">
       <Navbar />
       
       <main className="flex-1 pb-20 md:pb-8">

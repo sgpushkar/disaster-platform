@@ -10,104 +10,126 @@
   }
 
   body {
-    background-color: #08090c;
-    color: #f1f5f9;
+    background-color: #09090b;
+    color: #fafafa;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
-    background-image: 
-      radial-gradient(at 0% 0%, rgba(217, 119, 6, 0.035) 0px, transparent 40%),
-      radial-gradient(at 100% 100%, rgba(15, 17, 21, 0.6) 0px, transparent 50%);
   }
 
-  /* Custom scrollbar - sleek graphite */
+  /* Custom scrollbar - minimal dark obsidian */
   ::-webkit-scrollbar {
     width: 5px;
     height: 5px;
   }
   ::-webkit-scrollbar-track {
-    background: #08090c;
+    background: #09090b;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1c2028;
+    background: #27272a;
     border-radius: 2px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #2b313d;
+    background: #3f3f46;
   }
 }
 
+/* Zero-blue Obsidian Enforcement: guarantee no navy/slate blue tints anywhere */
+.bg-slate-950, [class*="bg-slate-950"] {
+  background-color: #09090b !important;
+}
+.bg-slate-900, [class*="bg-slate-900"] {
+  background-color: #111114 !important;
+}
+.bg-slate-850, [class*="bg-slate-850"] {
+  background-color: #151518 !important;
+}
+.bg-slate-800, [class*="bg-slate-800"] {
+  background-color: #18181b !important;
+}
+.border-slate-800, [class*="border-slate-800"] {
+  border-color: #222226 !important;
+}
+.border-slate-700, [class*="border-slate-700"] {
+  border-color: #2c2c31 !important;
+}
+.text-slate-400, [class*="text-slate-400"] {
+  color: #a1a1aa !important;
+}
+.text-slate-500, [class*="text-slate-500"] {
+  color: #71717a !important;
+}
+
 @layer components {
-  /* Tactical Panel */
+  /* Obsidian Crisis Card Panel */
   .card-panel {
-    background-color: rgba(15, 17, 21, 0.95);
-    border: 1px solid #1c2028;
+    background-color: #111114;
+    border: 1px solid #1f1f23;
     border-radius: 0.75rem;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(8px);
-    transition: all 0.2s ease;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .card-panel-hover {
-    @apply card-panel transition-all duration-200;
+    @apply card-panel;
   }
   .card-panel-hover:hover {
-    border-color: #2b313d;
-    box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.45);
+    border-color: #27272a;
+    box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.7);
   }
 
-  /* Action Buttons: High-visibility Rescue Amber / Titanium */
+  /* Action Buttons: High-visibility Signal Red / Stark Charcoal */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 
-           text-slate-950 text-sm font-semibold shadow-sm transition-all active:scale-[0.98] 
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 
+           text-white text-sm font-semibold shadow-sm transition-all active:scale-[0.98] 
            disabled:opacity-40 disabled:pointer-events-none;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 
-           border border-slate-700/80 text-slate-200 text-sm font-medium transition-all active:scale-[0.98] 
+           border border-slate-700 text-zinc-200 text-sm font-medium transition-all active:scale-[0.98] 
            disabled:opacity-40 disabled:pointer-events-none;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-100 
-           hover:bg-slate-800/80 text-sm font-medium transition-all;
+    @apply inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 
+           hover:bg-slate-800 text-sm font-medium transition-all;
   }
 
   .input-control {
-    @apply w-full px-3.5 py-2 text-sm bg-slate-950/90 border border-slate-800 text-slate-100 
-           placeholder:text-slate-600 rounded-lg focus:outline-none focus:border-amber-500/80 
-           focus:ring-1 focus:ring-amber-500/25 transition-all font-sans;
+    @apply w-full px-3.5 py-2 text-sm bg-[#0d0d10] border border-slate-700 text-zinc-100 
+           placeholder:text-zinc-500 rounded-lg focus:outline-none focus:border-red-500 
+           focus:ring-1 focus:ring-red-500/25 transition-all font-sans;
   }
 
-  /* Status Badges - Purposeful Semantic Urgency */
+  /* Status Badges - Precision Emergency Colors */
   .risk-badge-low {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-xs font-semibold;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-mono text-xs font-semibold;
   }
   .risk-badge-moderate {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/30 font-mono text-xs font-semibold;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/25 font-mono text-xs font-semibold;
   }
   .risk-badge-high {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-orange-500/15 text-orange-400 border border-orange-500/30 font-mono text-xs font-semibold;
   }
   .risk-badge-critical {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-500/20 text-rose-400 border border-rose-500/40 font-mono text-xs font-bold animate-pulse;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-500/15 text-red-400 border border-red-500/40 font-mono text-xs font-bold animate-pulse;
   }
 }
 
 /* Leaflet Map overrides for dark theme */
 .leaflet-container {
   font-family: inherit !important;
-  background-color: #08090c !important;
+  background-color: #09090b !important;
 }
 
 .leaflet-popup-content-wrapper {
-  background-color: #0f1115 !important;
-  color: #f1f5f9 !important;
-  border: 1px solid #1c2028 !important;
+  background-color: #111114 !important;
+  color: #fafafa !important;
+  border: 1px solid #27272a !important;
   border-radius: 0.75rem !important;
-  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.7) !important;
+  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.85) !important;
 }
 
 .leaflet-popup-tip {
-  background-color: #0f1115 !important;
+  background-color: #111114 !important;
 }
