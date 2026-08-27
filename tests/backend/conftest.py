@@ -5,6 +5,9 @@ and a TestClient with the DB dependency overridden.
 import os
 import sys
 
+# Override DATABASE_URL before any app module is imported
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "backend"))
 
 import pytest
