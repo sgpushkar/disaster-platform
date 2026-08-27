@@ -2,12 +2,11 @@ import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { 
   LayoutDashboard, 
-  Camera, 
   Map, 
   Bell, 
   ShieldCheck,
-  FileSpreadsheet,
-  Activity
+  Activity,
+  Shield
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -18,18 +17,18 @@ export default function BottomNav() {
   if (!user) return null
 
   const items = [
-    { label: 'Overview', path: '/dashboard', icon: LayoutDashboard },
+    { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { label: 'Map', path: '/map', icon: Map },
     { 
-      label: 'AI Scan', 
-      path: '/predict', 
-      icon: Camera, 
+      label: 'Safe Areas', 
+      path: '/safe-areas', 
+      icon: Shield, 
       isPrimary: true 
     },
     { label: 'Alerts', path: '/alerts', icon: Bell },
     user.role === 'admin'
       ? { label: 'Admin', path: '/admin', icon: ShieldCheck }
-      : { label: 'Reports', path: '/reports', icon: FileSpreadsheet },
+      : { label: 'Risk', path: '/predict', icon: Activity },
   ]
 
   return (
@@ -48,13 +47,13 @@ export default function BottomNav() {
               >
                 <div className={`h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
                   active 
-                    ? 'bg-blue-600 text-white ring-4 ring-slate-950 shadow-blue-500/25' 
-                    : 'bg-blue-600 text-white ring-4 ring-slate-950 hover:bg-blue-500'
+                    ? 'bg-emerald-600 text-white ring-4 ring-slate-950 shadow-emerald-500/30' 
+                    : 'bg-emerald-600 text-white ring-4 ring-slate-950 hover:bg-emerald-500'
                 }`}>
                   <Icon className="h-5 w-5" />
                 </div>
                 <span className={`text-[10px] font-mono mt-1 font-semibold ${
-                  active ? 'text-blue-400' : 'text-slate-400'
+                  active ? 'text-emerald-400' : 'text-slate-400'
                 }`}>
                   {item.label}
                 </span>

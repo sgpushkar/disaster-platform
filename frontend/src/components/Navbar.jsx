@@ -10,14 +10,16 @@ import {
   LogOut, 
   Radio,
   MapPin,
-  Menu
+  Menu,
+  Shield
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Predict', path: '/predict', icon: Activity },
+  { label: 'Risk Analysis', path: '/predict', icon: Activity },
   { label: 'GIS Map', path: '/map', icon: Map },
+  { label: 'Safe Areas', path: '/safe-areas', icon: Shield },
   { label: 'Alerts', path: '/alerts', icon: Bell },
   { label: 'Reports', path: '/reports', icon: FileSpreadsheet },
 ]
@@ -37,7 +39,7 @@ export default function Navbar() {
           <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
             <Radio className="h-3 w-3" />
-            RADAR FEED: ACTIVE
+            EARLY WARNING: ACTIVE
           </span>
           <span className="text-slate-600">|</span>
           <span className="flex items-center gap-1 text-slate-400">
