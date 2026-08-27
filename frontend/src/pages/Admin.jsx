@@ -1,373 +1,303 @@
 import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  Users, 
-  MapPin, 
-  Bell, 
-  CloudSun, 
-  Activity, 
-  Plus, 
-  Trash2, 
-  ShieldCheck, 
-  AlertTriangle,
-  RefreshCw,
-  Send
+import {
+  Users, MapPin, Bell, ShieldAlert, Trash2, Plus, RefreshCw,
+  Loader2, AlertTriangle, CheckCircle, Database, UserCog,
+  Clock, Bot, Leaf,
 } from 'lucide-react'
 import api from '../services/api'
 
-const TABS = [
-  { label: 'Users', icon: Users },
-  { label: 'Locations', icon: MapPin },
-  { label: 'Alerts', icon: Bell },
-  { label: 'Weather Log', icon: CloudSun },
-  { label: 'Predictions', icon: Activity },
-]
+function AdminSection({ title, icon: Icon, children }) {
+  return (
+    <div className="card-panel overflow-hidden">
+      <div className="px-5 py-3.5 border-b border-slate-800 flex items-center gap-2">
+        <Icon className="h-4 w-4 text-blue-400" />
+        <h2 className="text-sm font-bold font-mono uppercase text-slate-200">{title}</h2>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  )
+}
 
 export default function Admin() {
-  const [tab, setTab] = useState('Users')
   const [users, setUsers] = useState([])
   const [locations, setLocations] = useState([])
   const [alerts, setAlerts] = useState([])
-  const [weather, setWeather] = useState([])
-  const [predictions, setPredictions] = useState([])
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState('users')
 
-  const [newLocation, setNewLocation] = useState({ name: '', latitude: '', longitude: '', type: 'hospital' })
-  const [newAlert, setNewAlert] = useState({ message: '', risk_level: 'Moderate' })
-  const [submitting, setSubmitting] = useState(false)
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [locLoading, setLocLoading] = useState(false)
+  const [alertLoading, setAlertLoading] = useState(false)
+  const [seedLoading, setSeedLoading] = useState(false)
+  const [seedMsg, setSeedMsg] = useState('')
 
-  const loadAll = async () => {
-    try {
-      const [u, l, a, w, p] = await Promise.all([
-        api.get('/admin/users'),
-        api.get('/admin/locations'),
-        api.get('/alerts', { params: { limit: 50 } }),
-        api.get('/admin/weather'),
-        api.get('/admin/predictions'),
-      ])
-      setUsers(u.data)
-      setLocations(l.data)
-      setAlerts(a.data)
-      setWeather(w.data)
-      setPredictions(p.data)
-      setError('')
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to load administrative records.')
-    } finally {
-      setLoading(false)
-    }
+  const [feedback, setFeedback] = useState({ type: '', message: '' })
+
+  const showFeedback = (type, message) => {
+    setFeedback({ type, message })
+    setTimeout(() => setFeedback({ type: '', message: '' }), 4000)
   }
 
-  useEffect(() => { loadAll() }, [])
+  const [newLocation, setNewLocation] = useState({
+    name: '', latitude: '', longitude: '', type: 'shelter',
+    capacity: '', availability_status: 'open',
+    risk_level: 'Low', description: '', contact: '',
+  })
+  const [newAlert, setNewAlert] = useState({
+    title: '', message: '', risk_level: 'Moderate', risk_score: '',
+    location_name: '', recommended_action: '', expires_at: '',
+  })
+
+  useEffect(() => { loadUsers(); loadLocations(); loadAlerts() }, [])
+
+  const loadUsers = async () => {
+    setUsersLoading(true)
+    try { const r = await api.get('/admin/users'); setUsers(r.data) }
+    catch (_) {}
+    finally { setUsersLoading(false) }
+  }
+
+  const loadLocations = async () => {
+    setLocLoading(true)
+    try { const r = await api.get('/map'); setLocations(r.data) }
+    catch (_) {}
+    finally { setLocLoading(false) }
+  }
+
+  const loadAlerts = async () => {
+    setAlertLoading(true)
+    try { const r = await api.get('/alerts', { params: { limit: 50 } }); setAlerts(r.data) }
+    catch (_) {}
+    finally { setAlertLoading(false) }
+  }
 
   const deleteUser = async (id) => {
-    if (!confirm('Are you sure you want to remove this user account?')) return
-    try {
-      await api.delete(`/admin/users/${id}`)
-      loadAll()
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to delete user.')
-    }
-  }
-
-  const addLocation = async (e) => {
-    e.preventDefault()
-    setSubmitting(true)
-    try {
-      await api.post('/admin/locations', {
-        ...newLocation,
-        latitude: parseFloat(newLocation.latitude),
-        longitude: parseFloat(newLocation.longitude),
-      })
-      setNewLocation({ name: '', latitude: '', longitude: '', type: 'hospital' })
-      loadAll()
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to register GIS coordinate.')
-    } finally {
-      setSubmitting(false)
-    }
+    if (!confirm('Delete this user?')) return
+    try { await api.delete(`/admin/users/${id}`); setUsers(u => u.filter(x => x.id !== id)); showFeedback('success', 'User deleted.') }
+    catch (err) { showFeedback('error', err.response?.data?.detail || 'Delete failed') }
   }
 
   const deleteLocation = async (id) => {
-    try {
-      await api.delete(`/admin/locations/${id}`)
-      loadAll()
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to remove location.')
-    }
-  }
-
-  const addAlert = async (e) => {
-    e.preventDefault()
-    setSubmitting(true)
-    try {
-      await api.post('/admin/alerts', newAlert)
-      setNewAlert({ message: '', risk_level: 'Moderate' })
-      loadAll()
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to publish emergency alert.')
-    } finally {
-      setSubmitting(false)
-    }
+    if (!confirm('Delete this location?')) return
+    try { await api.delete(`/admin/locations/${id}`); setLocations(l => l.filter(x => x.id !== id)); showFeedback('success', 'Location deleted.') }
+    catch (err) { showFeedback('error', err.response?.data?.detail || 'Delete failed') }
   }
 
   const deleteAlert = async (id) => {
-    try {
-      await api.delete(`/admin/alerts/${id}`)
-      loadAll()
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to delete alert.')
-    }
+    if (!confirm('Delete this alert?')) return
+    try { await api.delete(`/admin/alerts/${id}`); setAlerts(a => a.filter(x => x.id !== id)); showFeedback('success', 'Alert deleted.') }
+    catch (err) { showFeedback('error', err.response?.data?.detail || 'Delete failed') }
   }
 
+  const createLocation = async (e) => {
+    e.preventDefault()
+    try {
+      const r = await api.post('/admin/locations', {
+        ...newLocation,
+        latitude: parseFloat(newLocation.latitude),
+        longitude: parseFloat(newLocation.longitude),
+        capacity: newLocation.capacity ? parseInt(newLocation.capacity) : null,
+      })
+      setLocations(l => [...l, r.data])
+      setNewLocation({ name: '', latitude: '', longitude: '', type: 'shelter', capacity: '', availability_status: 'open', risk_level: 'Low', description: '', contact: '' })
+      showFeedback('success', `Location "${r.data.name}" added.`)
+    } catch (err) { showFeedback('error', err.response?.data?.detail || 'Failed to add location') }
+  }
+
+  const createAlert = async (e) => {
+    e.preventDefault()
+    try {
+      const r = await api.post('/admin/alerts', {
+        ...newAlert,
+        risk_score: newAlert.risk_score ? parseFloat(newAlert.risk_score) : null,
+        expires_at: newAlert.expires_at || null,
+      })
+      setAlerts(a => [r.data, ...a])
+      setNewAlert({ title: '', message: '', risk_level: 'Moderate', risk_score: '', location_name: '', recommended_action: '', expires_at: '' })
+      showFeedback('success', 'Alert broadcast.')
+    } catch (err) { showFeedback('error', err.response?.data?.detail || 'Failed to create alert') }
+  }
+
+  const seedLocations = async () => {
+    setSeedLoading(true)
+    try {
+      const r = await api.post('/admin/seed-locations')
+      setSeedMsg(r.data.detail)
+      await loadLocations()
+      showFeedback('success', r.data.detail)
+    } catch (err) { showFeedback('error', err.response?.data?.detail || 'Seed failed') }
+    finally { setSeedLoading(false) }
+  }
+
+  const TABS = [
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'locations', label: 'Locations', icon: MapPin },
+    { id: 'alerts', label: 'Alerts', icon: Bell },
+  ]
+
+  const inputCls = 'input-control text-xs py-2'
+  const selectCls = 'input-control text-xs py-2 bg-slate-950/70'
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Admin Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">System Administration Console</h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center gap-1">
-              <ShieldCheck className="h-3 w-3" />
-              ROOT ACCESS
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Admin Panel</h1>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/10 text-red-400 border border-red-500/20">
+              ADMIN ONLY
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Manage user accounts, geospatial infrastructure assets, emergency dispatch advisories, and system telemetry logs.
-          </p>
+          <p className="text-xs text-slate-400 mt-1">System management · Data seeding · Emergency broadcasts</p>
         </div>
-
-        <button onClick={loadAll} className="btn-secondary text-xs py-1.5 px-3">
-          <RefreshCw className="h-3.5 w-3.5" />
-          <span>Refresh All</span>
-        </button>
       </div>
 
-      {error && (
-        <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
-          <span>{error}</span>
-        </div>
+      {/* Feedback toast */}
+      {feedback.message && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className={`card-panel p-3.5 flex items-center gap-2 text-sm ${
+            feedback.type === 'success' ? 'border-emerald-500/30 text-emerald-300' : 'border-red-500/30 text-red-300'
+          }`}
+        >
+          {feedback.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+          {feedback.message}
+        </motion.div>
       )}
+
+      {/* Dev seed section */}
+      <AdminSection title="Development Data Seeding" icon={Database}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex-1">
+            <p className="text-sm text-slate-300 font-medium">Seed Pune Emergency Locations</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Populates hospitals, shelters, police stations, fire stations & safe zones for Pune, India.
+              <strong className="text-amber-400"> Clearly marked as dev/unverified data.</strong>
+            </p>
+            {seedMsg && <p className="text-xs text-emerald-400 mt-1">{seedMsg}</p>}
+          </div>
+          <button
+            onClick={seedLocations}
+            disabled={seedLoading}
+            className="btn-primary text-xs py-2 px-4 shrink-0"
+          >
+            {seedLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Leaf className="h-3.5 w-3.5" />}
+            {seedLoading ? 'Seeding...' : 'Seed Locations'}
+          </button>
+        </div>
+      </AdminSection>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800 overflow-x-auto text-xs font-medium">
-        {TABS.map((item) => {
-          const Icon = item.icon
-          const active = tab === item.label
-          return (
-            <button
-              key={item.label}
-              onClick={() => setTab(item.label)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg transition-all shrink-0 ${
-                active
-                  ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                  : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              <span>{item.label}</span>
-            </button>
-          )
-        })}
+      <div className="flex gap-1 border-b border-slate-800 pb-0">
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium font-mono transition-all border-b-2 -mb-px ${
+              tab === id
+                ? 'border-blue-500 text-blue-300'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+            <span className="text-[10px] font-mono text-slate-600">
+              ({id === 'users' ? users.length : id === 'locations' ? locations.length : alerts.length})
+            </span>
+          </button>
+        ))}
       </div>
 
-      {/* Users Tab */}
-      {tab === 'Users' && (
-        <div className="card-panel overflow-hidden">
-          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-            <h2 className="text-xs font-mono uppercase font-bold text-slate-200">Registered Accounts ({users.length})</h2>
+      {/* ── Users Tab ── */}
+      {tab === 'users' && (
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <button onClick={loadUsers} disabled={usersLoading} className="btn-secondary text-xs py-1.5 px-3">
+              <RefreshCw className={`h-3.5 w-3.5 ${usersLoading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-950/60 font-mono uppercase text-slate-500 border-b border-slate-800 text-[11px]">
-                <tr>
-                  <th className="py-3 px-4">Operator Name</th>
-                  <th className="py-3 px-4">Email Address</th>
-                  <th className="py-3 px-4">Authorization Role</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-3 px-4 font-medium text-slate-200">{u.name}</td>
-                    <td className="py-3 px-4 font-mono text-slate-400">{u.email}</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold ${
-                        u.role === 'admin' 
-                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
-                          : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                      }`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => deleteUser(u.id)}
-                        className="p-1 text-slate-500 hover:text-red-400 transition-colors"
-                        title="Delete User"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Locations Tab */}
-      {tab === 'Locations' && (
-        <div className="space-y-4">
-          {/* Add Location Form */}
-          <div className="card-panel p-4 space-y-3">
-            <span className="text-xs font-mono uppercase font-bold text-slate-300 block">
-              Register New GIS Critical Infrastructure
-            </span>
-            <form onSubmit={addLocation} className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-              <input
-                required
-                placeholder="Facility Name (e.g. Metro Hospital)"
-                value={newLocation.name}
-                onChange={(e) => setNewLocation({ ...newLocation, name: e.target.value })}
-                className="input-control text-xs sm:col-span-2"
-              />
-              <input
-                required
-                type="number"
-                step="any"
-                placeholder="Latitude (e.g. 19.0760)"
-                value={newLocation.latitude}
-                onChange={(e) => setNewLocation({ ...newLocation, latitude: e.target.value })}
-                className="input-control text-xs font-mono"
-              />
-              <input
-                required
-                type="number"
-                step="any"
-                placeholder="Longitude (e.g. 72.8777)"
-                value={newLocation.longitude}
-                onChange={(e) => setNewLocation({ ...newLocation, longitude: e.target.value })}
-                className="input-control text-xs font-mono"
-              />
-              <select
-                value={newLocation.type}
-                onChange={(e) => setNewLocation({ ...newLocation, type: e.target.value })}
-                className="input-control text-xs"
-              >
-                <option value="hospital">Hospital</option>
-                <option value="shelter">Shelter</option>
-                <option value="police">Police Station</option>
-                <option value="danger_zone">Danger Zone</option>
-              </select>
-              <button type="submit" disabled={submitting} className="btn-primary text-xs sm:col-span-5 sm:w-auto">
-                <Plus className="h-3.5 w-3.5" />
-                Add Asset to GIS Database
-              </button>
-            </form>
-          </div>
-
-          {/* Locations Table */}
-          <div className="card-panel overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-slate-950/60 font-mono uppercase text-slate-500 border-b border-slate-800 text-[11px]">
-                  <tr>
-                    <th className="py-3 px-4">Facility Name</th>
-                    <th className="py-3 px-4">Type</th>
-                    <th className="py-3 px-4">Coordinates (Lat, Lon)</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {locations.map((l) => (
-                    <tr key={l.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="py-3 px-4 font-medium text-slate-200">{l.name}</td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-slate-800 text-slate-300">
-                          {l.type.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-slate-400">
-                        {l.latitude?.toFixed(4)}, {l.longitude?.toFixed(4)}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => deleteLocation(l.id)}
-                          className="p-1 text-slate-500 hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Alerts Tab */}
-      {tab === 'Alerts' && (
-        <div className="space-y-4">
-          {/* Add Alert Form */}
-          <div className="card-panel p-4 space-y-3">
-            <span className="text-xs font-mono uppercase font-bold text-slate-300 block">
-              Broadcast Emergency Dispatch Advisory
-            </span>
-            <form onSubmit={addAlert} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <input
-                required
-                placeholder="Alert description (e.g. Flash flood warning issued for Sector 4)"
-                value={newAlert.message}
-                onChange={(e) => setNewAlert({ ...newAlert, message: e.target.value })}
-                className="input-control text-xs sm:col-span-2"
-              />
-              <select
-                value={newAlert.risk_level}
-                onChange={(e) => setNewAlert({ ...newAlert, risk_level: e.target.value })}
-                className="input-control text-xs font-mono"
-              >
-                <option value="Low">Low Priority</option>
-                <option value="Moderate">Moderate Priority</option>
-                <option value="High">High Priority</option>
-                <option value="Critical">Critical Priority</option>
-              </select>
-              <button type="submit" disabled={submitting} className="btn-primary text-xs">
-                <Send className="h-3.5 w-3.5" />
-                Dispatch Alert
-              </button>
-            </form>
-          </div>
-
-          {/* Alerts List */}
-          <div className="card-panel overflow-hidden divide-y divide-slate-800/60">
-            {alerts.map((a) => (
-              <div key={a.id} className="p-3.5 flex items-center justify-between gap-4 hover:bg-slate-800/20 text-xs">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-                      a.risk_level === 'Critical' ? 'bg-red-500/15 text-red-400' :
-                      a.risk_level === 'High' ? 'bg-orange-500/15 text-orange-400' :
-                      'bg-amber-500/15 text-amber-400'
-                    }`}>
-                      {a.risk_level}
-                    </span>
-                    <span className="text-[10px] font-mono text-slate-500">
-                      {new Date(a.timestamp).toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="text-slate-200">{a.message}</p>
+          {users.map((u) => (
+            <div key={u.id} className="card-panel p-3.5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-lg bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-300">
+                  {u.name[0]?.toUpperCase()}
                 </div>
-                <button
-                  onClick={() => deleteAlert(a.id)}
-                  className="p-1 text-slate-500 hover:text-red-400 transition-colors"
-                >
+                <div>
+                  <p className="text-sm font-medium text-white">{u.name}</p>
+                  <p className="text-xs font-mono text-slate-400">{u.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
+                  u.role === 'admin'
+                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/25'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                }`}>
+                  {u.role}
+                </span>
+                <button onClick={() => deleteUser(u.id)} className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Locations Tab ── */}
+      {tab === 'locations' && (
+        <div className="space-y-5">
+          {/* Add form */}
+          <form onSubmit={createLocation} className="card-panel p-5 space-y-4">
+            <h3 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+              <Plus className="h-3.5 w-3.5 text-emerald-400" />
+              Add Emergency Location
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input required value={newLocation.name} onChange={e => setNewLocation(p => ({...p, name: e.target.value}))} placeholder="Name *" className={inputCls} />
+              <select value={newLocation.type} onChange={e => setNewLocation(p => ({...p, type: e.target.value}))} className={selectCls}>
+                {['shelter','hospital','police','fire_station','safe_zone','danger_zone'].map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <input required type="number" step="any" value={newLocation.latitude} onChange={e => setNewLocation(p => ({...p, latitude: e.target.value}))} placeholder="Latitude *" className={inputCls} />
+              <input required type="number" step="any" value={newLocation.longitude} onChange={e => setNewLocation(p => ({...p, longitude: e.target.value}))} placeholder="Longitude *" className={inputCls} />
+              <input type="number" value={newLocation.capacity} onChange={e => setNewLocation(p => ({...p, capacity: e.target.value}))} placeholder="Capacity (optional)" className={inputCls} />
+              <select value={newLocation.availability_status} onChange={e => setNewLocation(p => ({...p, availability_status: e.target.value}))} className={selectCls}>
+                <option value="open">Open</option>
+                <option value="full">Full</option>
+                <option value="closed">Closed</option>
+              </select>
+              <select value={newLocation.risk_level} onChange={e => setNewLocation(p => ({...p, risk_level: e.target.value}))} className={selectCls}>
+                {['Low','Moderate','High','Critical'].map(l => <option key={l} value={l}>{l} Risk</option>)}
+              </select>
+              <input value={newLocation.contact} onChange={e => setNewLocation(p => ({...p, contact: e.target.value}))} placeholder="Contact / phone" className={inputCls} />
+              <input value={newLocation.description} onChange={e => setNewLocation(p => ({...p, description: e.target.value}))} placeholder="Description (optional)" className={`${inputCls} sm:col-span-2`} />
+            </div>
+            <button type="submit" className="btn-primary text-xs py-2 px-4">
+              <Plus className="h-3.5 w-3.5" /> Add Location
+            </button>
+          </form>
+
+          {/* Locations list */}
+          <div className="space-y-2">
+            {locations.map((loc) => (
+              <div key={loc.id} className="card-panel p-3.5 flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-white font-medium">{loc.name}</p>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">{loc.type}</span>
+                    {loc.is_seed_data && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500">dev seed</span>
+                    )}
+                  </div>
+                  <p className="text-xs font-mono text-slate-500">
+                    {loc.latitude.toFixed(4)}°N, {loc.longitude.toFixed(4)}°E
+                    {loc.availability_status && ` · ${loc.availability_status}`}
+                  </p>
+                </div>
+                <button onClick={() => deleteLocation(loc.id)} className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
@@ -376,76 +306,105 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Weather Log Tab */}
-      {tab === 'Weather Log' && (
-        <div className="card-panel overflow-hidden">
-          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-            <h2 className="text-xs font-mono uppercase font-bold text-slate-200">Historical Weather Log ({weather.length})</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-950/60 font-mono uppercase text-slate-500 border-b border-slate-800 text-[11px]">
-                <tr>
-                  <th className="py-3 px-4">Timestamp</th>
-                  <th className="py-3 px-4">Temperature</th>
-                  <th className="py-3 px-4">Humidity</th>
-                  <th className="py-3 px-4">Wind Speed</th>
-                  <th className="py-3 px-4">Rainfall</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 font-mono">
-                {weather.map((w) => (
-                  <tr key={w.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-3 px-4 text-slate-400">{new Date(w.timestamp).toLocaleString()}</td>
-                    <td className="py-3 px-4 text-white font-semibold">{w.temperature}°C</td>
-                    <td className="py-3 px-4 text-slate-300">{w.humidity}%</td>
-                    <td className="py-3 px-4 text-slate-300">{w.wind_speed} m/s</td>
-                    <td className="py-3 px-4 text-slate-300">{w.rainfall} mm</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* ── Alerts Tab ── */}
+      {tab === 'alerts' && (
+        <div className="space-y-5">
+          {/* Create alert form */}
+          <form onSubmit={createAlert} className="card-panel p-5 space-y-4">
+            <h3 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+              <Bell className="h-3.5 w-3.5 text-amber-400" />
+              Broadcast Emergency Alert
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                value={newAlert.title}
+                onChange={e => setNewAlert(p => ({...p, title: e.target.value}))}
+                placeholder="Alert title (e.g. Flood Warning — Nashik)"
+                className={`${inputCls} sm:col-span-2`}
+              />
+              <select
+                value={newAlert.risk_level}
+                onChange={e => setNewAlert(p => ({...p, risk_level: e.target.value}))}
+                className={selectCls}
+              >
+                {['Low','Moderate','High','Critical'].map(l => <option key={l} value={l}>{l}</option>)}
+              </select>
+              <input
+                type="number" min="0" max="100" step="0.1"
+                value={newAlert.risk_score}
+                onChange={e => setNewAlert(p => ({...p, risk_score: e.target.value}))}
+                placeholder="Risk score 0–100 (optional)"
+                className={inputCls}
+              />
+              <input
+                value={newAlert.location_name}
+                onChange={e => setNewAlert(p => ({...p, location_name: e.target.value}))}
+                placeholder="Location name (optional)"
+                className={inputCls}
+              />
+              <input
+                type="datetime-local"
+                value={newAlert.expires_at}
+                onChange={e => setNewAlert(p => ({...p, expires_at: e.target.value}))}
+                className={inputCls}
+                title="Expiry date/time (optional)"
+              />
+            </div>
+            <textarea
+              required
+              rows={3}
+              value={newAlert.message}
+              onChange={e => setNewAlert(p => ({...p, message: e.target.value}))}
+              placeholder="Alert message (required) *"
+              className={`${inputCls} resize-none`}
+            />
+            <textarea
+              rows={2}
+              value={newAlert.recommended_action}
+              onChange={e => setNewAlert(p => ({...p, recommended_action: e.target.value}))}
+              placeholder="Recommended action (optional — what should people do?)"
+              className={`${inputCls} resize-none`}
+            />
+            <button type="submit" className="btn-primary text-xs py-2 px-4">
+              <ShieldAlert className="h-3.5 w-3.5" /> Broadcast Alert
+            </button>
+          </form>
 
-      {/* Predictions Tab */}
-      {tab === 'Predictions' && (
-        <div className="card-panel overflow-hidden">
-          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-            <h2 className="text-xs font-mono uppercase font-bold text-slate-200">Neural Inference Archive ({predictions.length})</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-950/60 font-mono uppercase text-slate-500 border-b border-slate-800 text-[11px]">
-                <tr>
-                  <th className="py-3 px-4">Model Pipeline</th>
-                  <th className="py-3 px-4">Confidence</th>
-                  <th className="py-3 px-4">Risk Level</th>
-                  <th className="py-3 px-4">Execution Timestamp</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 font-mono">
-                {predictions.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-3 px-4 text-slate-200 capitalize">{p.prediction_type}</td>
-                    <td className="py-3 px-4 text-white font-semibold">
-                      {p.confidence != null ? `${p.confidence.toFixed(1)}%` : '—'}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase ${
-                        p.risk_level === 'Critical' ? 'bg-red-500/15 text-red-400' :
-                        p.risk_level === 'High' ? 'bg-orange-500/15 text-orange-400' :
-                        'bg-blue-500/15 text-blue-400'
-                      }`}>
-                        {p.risk_level || 'Evaluated'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-400">{new Date(p.created_at).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* Alert list */}
+          <div className="space-y-2">
+            {alerts.map((alert) => (
+              <div key={alert.id} className="card-panel p-3.5 flex items-start justify-between gap-3">
+                <div className="space-y-1.5 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      alert.risk_level === 'Critical' ? 'bg-red-500/15 text-red-400 border-red-500/25' :
+                      alert.risk_level === 'High' ? 'bg-orange-500/15 text-orange-400 border-orange-500/25' :
+                      'bg-amber-500/15 text-amber-400 border-amber-500/25'
+                    }`}>
+                      {alert.risk_level}
+                    </span>
+                    <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded flex items-center gap-1 ${
+                      alert.source === 'ai' ? 'text-blue-400 bg-blue-500/10' : 'text-purple-400 bg-purple-500/10'
+                    }`}>
+                      {alert.source === 'ai' ? <Bot className="h-2.5 w-2.5" /> : <UserCog className="h-2.5 w-2.5" />}
+                      {alert.source}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {new Date(alert.timestamp).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {alert.title && <p className="text-sm font-semibold text-white">{alert.title}</p>}
+                  <p className="text-xs text-slate-400 line-clamp-2">{alert.message}</p>
+                  {alert.recommended_action && (
+                    <p className="text-[11px] text-slate-500 italic line-clamp-1">→ {alert.recommended_action}</p>
+                  )}
+                </div>
+                <button onClick={() => deleteAlert(alert.id)} className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}

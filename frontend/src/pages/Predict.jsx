@@ -1,482 +1,363 @@
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
-import { 
-  Upload, 
-  CloudRain, 
-  ShieldAlert, 
-  CheckCircle2, 
-  AlertTriangle, 
-  FileText, 
-  Sliders, 
-  Activity, 
-  ArrowRight,
-  Image as ImageIcon,
-  Sparkles,
-  Info,
-  Check,
-  RefreshCw,
-  Camera
+import React, { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Activity, CloudRain, Upload, Image, AlertTriangle, CheckCircle,
+  ShieldAlert, ChevronDown, ChevronUp, Loader2, Camera, BarChart3, Info,
 } from 'lucide-react'
 import api from '../services/api'
+import RiskGauge from '../components/RiskGauge.jsx'
 
-const PRESETS = [
-  { label: 'Normal / Dry', values: '0, 0, 1.2, 0, 0.5, 0, 0' },
-  { label: 'Moderate Monsoon', values: '12.5, 18.0, 15.2, 22.0, 19.4, 25.0, 20.1' },
-  { label: 'Severe Cloudburst', values: '45.0, 62.5, 80.0, 55.2, 90.0, 75.4, 110.0' },
-]
+function Section({ title, icon: Icon, iconColor = 'text-blue-400', children, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="card-panel overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-4 hover:bg-slate-800/30 transition-colors"
+      >
+        <span className="flex items-center gap-2 text-sm font-bold font-mono uppercase text-slate-200">
+          <Icon className={`h-4 w-4 ${iconColor}`} />
+          {title}
+        </span>
+        {open ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <div className="px-4 pb-4 pt-0 border-t border-slate-800">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export default function Predict() {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [imageResult, setImageResult] = useState(null)
-  const [imageError, setImageError] = useState('')
   const [imageLoading, setImageLoading] = useState(false)
 
-  const [rainfallInput, setRainfallInput] = useState('12.5, 18.0, 15.2, 22.0, 19.4, 25.0, 20.1')
+  const [rainfallValues, setRainfallValues] = useState(Array(14).fill(''))
   const [rainfallResult, setRainfallResult] = useState(null)
-  const [rainfallError, setRainfallError] = useState('')
   const [rainfallLoading, setRainfallLoading] = useState(false)
 
   const [riskResult, setRiskResult] = useState(null)
-  const [riskError, setRiskError] = useState('')
   const [riskLoading, setRiskLoading] = useState(false)
+  const [riskError, setRiskError] = useState('')
+
+  const fileRef = useRef()
+
+  // Auto-fetch current risk on load (no image required)
+  useEffect(() => {
+    const loc = localStorage.getItem('disaster_intel_location')
+    const params = loc ? (() => { try { const p = JSON.parse(loc); return { lat: p.lat, lon: p.lon } } catch (_) { return {} } })() : {}
+    api.get('/risk/current', { params }).then(r => setRiskResult(r.data)).catch(() => {})
+  }, [])
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0]
+    const file = e.target.files?.[0]
     if (!file) return
     setImageFile(file)
     setImagePreview(URL.createObjectURL(file))
     setImageResult(null)
-    setImageError('')
   }
 
-  const handleImageSubmit = async () => {
+  const submitImage = async () => {
     if (!imageFile) return
     setImageLoading(true)
-    setImageError('')
     try {
-      const formData = new FormData()
-      formData.append('file', imageFile)
-      const { data } = await api.post('/upload-image', formData, {
+      const form = new FormData()
+      form.append('file', imageFile)
+      const { data } = await api.post('/predict/flood-image', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       setImageResult(data)
     } catch (err) {
-      setImageError(err.response?.data?.detail || 'CNN model offline or uninitialized. Train the model using DATASET_GUIDE.md.')
+      setImageResult({ error: err.response?.data?.detail || 'Image classification failed. Ensure the flood model is trained.' })
     } finally {
       setImageLoading(false)
     }
   }
 
-  const handleRainfallSubmit = async () => {
+  const submitRainfall = async () => {
+    const values = rainfallValues.map(v => parseFloat(v) || 0)
     setRainfallLoading(true)
-    setRainfallError('')
     try {
-      const values = rainfallInput.split(',').map((v) => parseFloat(v.trim())).filter((v) => !isNaN(v))
-      if (values.length < 1) throw new Error('Please enter at least 1 historical rainfall value.')
       const { data } = await api.post('/predict/rainfall', { recent_rainfall_mm: values })
       setRainfallResult(data)
     } catch (err) {
-      setRainfallError(err.response?.data?.detail || err.message || 'Rainfall LSTM forecast model offline or data invalid.')
+      setRainfallResult({ error: err.response?.data?.detail || 'Rainfall prediction failed. Ensure the LSTM model is trained.' })
     } finally {
       setRainfallLoading(false)
     }
   }
 
-  const handleRiskSubmit = async () => {
+  const submitCombinedRisk = async () => {
     setRiskLoading(true)
     setRiskError('')
     try {
-      const { data } = await api.post('/predict/risk', {
-        flood_image_confidence: imageResult?.confidence ?? null,
-        flood_image_label: imageResult?.prediction ?? null,
-        rainfall_forecast_mm: rainfallResult?.tomorrow_mm ?? null,
-        use_latest_weather: true,
-      })
+      const loc = localStorage.getItem('disaster_intel_location')
+      const params = loc ? (() => { try { const p = JSON.parse(loc); return { lat: p.lat, lon: p.lon } } catch (_) { return {} } })() : {}
+      const { data } = await api.get('/risk/current', { params })
       setRiskResult(data)
     } catch (err) {
-      setRiskError(err.response?.data?.detail || 'Multi-factor risk computation failed.')
+      setRiskError(err.response?.data?.detail || 'Risk computation failed.')
     } finally {
       setRiskLoading(false)
     }
   }
 
-  // Visual parsed values for rainfall mini bar preview
-  const parsedRainfall = rainfallInput.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v))
-  const maxRain = Math.max(...parsedRainfall, 20)
+  const RISK_COLOR = {
+    Low: 'text-emerald-400', Moderate: 'text-amber-400', High: 'text-orange-400', Critical: 'text-red-400',
+  }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Page Header */}
-      <div className="pb-4 border-b border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Disaster Intelligence & Prediction Studio</h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              AI INFERENCE ENGINE
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+      {/* Header */}
+      <div className="pb-4 border-b border-slate-800">
+        <div className="flex items-center gap-2 mb-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Risk Analysis</h1>
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            AI ENGINE
+          </span>
+        </div>
+        <p className="text-xs text-slate-400">
+          Environmental risk assessment using weather conditions and rainfall signals.
+          Image evidence is <strong>optional</strong> and used as a secondary supporting check.
+        </p>
+      </div>
+
+      {/* ── Section 1: Current Environmental Risk (Primary) ── */}
+      <Section title="Current Environmental Risk" icon={ShieldAlert} defaultOpen>
+        <div className="pt-4 space-y-4">
+          <div className="p-3 rounded-lg bg-blue-500/8 border border-blue-500/20 text-xs text-blue-300 leading-relaxed flex items-start gap-2">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-400" />
+            <span>
+              This computes risk from <strong>live weather + rainfall signals</strong>. 
+              No image required. Risk is an <em>estimate</em>, not a prediction of an event.
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Execute CNN computer vision terrain classification, LSTM deep precipitation forecasting, and multi-sensor risk fusion.
-          </p>
-        </div>
 
-        {/* Workflow indicator */}
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-400 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-800">
-          <span className={imageResult ? 'text-emerald-400 font-semibold' : 'text-slate-400'}>1. Terrain Scan</span>
-          <span>→</span>
-          <span className={rainfallResult ? 'text-emerald-400 font-semibold' : 'text-slate-400'}>2. LSTM Rain</span>
-          <span>→</span>
-          <span className={riskResult ? 'text-emerald-400 font-semibold' : 'text-slate-400'}>3. Risk Fusion</span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Step 1: Flood Image Classification (CNN) */}
-        <div className="card-panel p-5 space-y-4 flex flex-col justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                  <ImageIcon className="h-4 w-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-slate-200">1. Optical Flood Detection (CNN)</h2>
-                  <p className="text-[11px] text-slate-400">Deep learning visual surface water classification</p>
-                </div>
+          {riskResult && !riskResult.error ? (
+            <div className="space-y-4">
+              <div className="flex flex-col items-center gap-3 py-2">
+                <RiskGauge
+                  riskScore={Math.round(riskResult.risk_score ?? 0)}
+                  riskLevel={riskResult.risk_level}
+                  riskTrend={riskResult.risk_trend}
+                  size="lg"
+                />
+                {riskResult.recommendation && (
+                  <p className="text-xs text-slate-400 text-center leading-relaxed max-w-md">
+                    {riskResult.recommendation}
+                  </p>
+                )}
               </div>
-              <span className="text-[10px] font-mono text-slate-500">224x224 RGB</span>
-            </div>
 
-            {/* Upload & Mobile Camera Actions */}
-            <div className="mt-3 space-y-3">
-              {imagePreview ? (
-                <div className="relative group/preview flex flex-col items-center justify-center p-3 border border-slate-800 rounded-xl bg-slate-950/60">
-                  <img src={imagePreview} alt="Terrain preview" className="max-h-44 rounded-lg object-contain border border-slate-700" />
-                  <button
-                    onClick={() => {
-                      setImageFile(null)
-                      setImagePreview(null)
-                      setImageResult(null)
-                    }}
-                    className="mt-2 text-xs text-red-400 hover:underline font-mono"
-                  >
-                    Clear Photo & Rescan
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-blue-500/30 hover:border-blue-500 rounded-xl cursor-pointer bg-blue-500/5 hover:bg-blue-500/10 transition-all active:scale-[0.98]">
-                    <input type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="hidden" />
-                    <Camera className="h-6 w-6 text-blue-400 mb-1.5" />
-                    <span className="text-xs font-semibold text-white">Snap Camera Photo</span>
-                    <span className="text-[10px] font-mono text-slate-400">Mobile Camera Direct</span>
-                  </label>
-
-                  <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-800 hover:border-slate-700 rounded-xl cursor-pointer bg-slate-950/50 hover:bg-slate-900 transition-all active:scale-[0.98]">
-                    <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                    <Upload className="h-6 w-6 text-slate-400 mb-1.5" />
-                    <span className="text-xs font-semibold text-slate-200">Browse Image File</span>
-                    <span className="text-[10px] font-mono text-slate-500">Drone / Gallery Photo</span>
-                  </label>
+              {/* Contributing factors */}
+              {riskResult.contributing_factors?.length > 0 && (
+                <div className="space-y-2.5">
+                  <p className="text-[11px] font-mono uppercase text-slate-500">Contributing Factors</p>
+                  {riskResult.contributing_factors.map((f) => (
+                    <div key={f.key}>
+                      <div className="flex justify-between text-[11px] font-mono mb-1">
+                        <span className="text-slate-300">{f.label}</span>
+                        <span className="text-blue-300">{f.score}/100 · {f.weight_pct}%</span>
+                      </div>
+                      <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 rounded-full transition-all duration-700"
+                          style={{ width: `${Math.min(100, f.score)}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-600 mt-0.5">{f.description}</p>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="space-y-3 pt-2">
-            <button
-              onClick={handleImageSubmit}
-              disabled={!imageFile || imageLoading}
-              className="btn-primary w-full py-2.5 text-xs font-semibold"
-            >
-              {imageLoading ? (
-                <>
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  Running Neural Classification...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Analyze Terrain Image
-                </>
+          ) : (
+            <div className="py-4 text-center">
+              {riskResult?.error && (
+                <p className="text-xs text-amber-400 mb-3">{riskResult.error}</p>
               )}
-            </button>
-
-            {imageError && (
-              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
-                <span>{imageError}</span>
-              </div>
-            )}
-
-            {imageResult && (
-              <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 font-mono">CLASSIFICATION RESULT:</span>
-                  <span className={`px-2 py-0.5 rounded font-mono font-bold text-xs ${
-                    imageResult.prediction === 'Flood'
-                      ? 'bg-red-500/15 text-red-400 border border-red-500/30'
-                      : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                  }`}>
-                    {imageResult.prediction?.toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <div className="flex justify-between text-[11px] font-mono text-slate-400 mb-1">
-                    <span>Inference Confidence</span>
-                    <span className="text-white font-bold">{imageResult.confidence}%</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-500 ${
-                        imageResult.prediction === 'Flood' ? 'bg-red-500' : 'bg-emerald-500'
-                      }`}
-                      style={{ width: `${imageResult.confidence}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Step 2: Rainfall Forecast (LSTM) */}
-        <div className="card-panel p-5 space-y-4 flex flex-col justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                  <CloudRain className="h-4 w-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-slate-200">2. Precipitation Forecast (LSTM)</h2>
-                  <p className="text-[11px] text-slate-400">Recurrent deep neural network time-series prediction</p>
-                </div>
-              </div>
-              <span className="text-[10px] font-mono text-slate-500">7-DAY INPUT</span>
             </div>
+          )}
 
-            {/* Quick Presets */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-mono uppercase text-slate-400 flex items-center justify-between">
-                <span>Quick Scenario Presets:</span>
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {PRESETS.map((p) => (
-                  <button
-                    key={p.label}
-                    onClick={() => setRainfallInput(p.values)}
-                    className="px-2 py-1 rounded bg-slate-950/80 hover:bg-slate-800 border border-slate-800 text-[11px] text-slate-300 transition-colors truncate"
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Manual Input */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-mono uppercase text-slate-400">
-                Recent 7-Day Rainfall Values (mm):
-              </label>
-              <input
-                value={rainfallInput}
-                onChange={(e) => setRainfallInput(e.target.value)}
-                className="input-control font-mono text-xs"
-                placeholder="10, 15, 20, 12, 8, 4, 30"
-              />
-            </div>
-
-            {/* Mini Bar Preview */}
-            <div className="p-2.5 rounded-lg bg-slate-950/50 border border-slate-800/80">
-              <span className="text-[10px] font-mono text-slate-500 uppercase block mb-1.5">Input Distribution Profile</span>
-              <div className="flex items-end gap-1.5 h-12 pt-1">
-                {parsedRainfall.map((val, idx) => (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-                    <div
-                      className="w-full bg-blue-500/40 rounded-t border-t border-blue-400/60"
-                      style={{ height: `${Math.min(100, (val / maxRain) * 100)}%` }}
-                    />
-                    <span className="text-[9px] font-mono text-slate-500">{val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3 pt-2">
-            <button
-              onClick={handleRainfallSubmit}
-              disabled={rainfallLoading}
-              className="btn-primary w-full py-2.5 text-xs font-semibold"
-            >
-              {rainfallLoading ? (
-                <>
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  Computing LSTM Forecast...
-                </>
-              ) : (
-                <>
-                  <CloudRain className="h-3.5 w-3.5" />
-                  Generate 4-Day Precipitation Forecast
-                </>
-              )}
-            </button>
-
-            {rainfallError && (
-              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
-                <span>{rainfallError}</span>
-              </div>
-            )}
-
-            {rainfallResult && (
-              <div className="grid grid-cols-4 gap-2 pt-1">
-                <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-center">
-                  <span className="text-[10px] font-mono uppercase text-blue-400 font-semibold block">Tomorrow</span>
-                  <span className="text-base font-bold font-mono text-white block mt-0.5">
-                    {rainfallResult.tomorrow_mm} <span className="text-[10px] font-normal text-slate-400">mm</span>
-                  </span>
-                </div>
-                {rainfallResult.next_3_days_mm.map((mm, i) => (
-                  <div key={i} className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800 text-center">
-                    <span className="text-[10px] font-mono uppercase text-slate-400 block">Day +{i + 2}</span>
-                    <span className="text-base font-bold font-mono text-slate-200 block mt-0.5">
-                      {mm} <span className="text-[10px] font-normal text-slate-500">mm</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Step 3: Multi-Source Risk Fusion Engine */}
-      <div className="card-panel p-6 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                <ShieldAlert className="h-4 w-4" />
-              </div>
-              <h2 className="text-base font-bold text-slate-200">3. Multi-Factor Risk Assessment Engine</h2>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Fuses optical terrain scan + LSTM rainfall forecast + live weather telemetry into an operational index.
-            </p>
-          </div>
+          {riskError && (
+            <p className="text-xs text-red-400">{riskError}</p>
+          )}
 
           <button
-            onClick={handleRiskSubmit}
+            onClick={submitCombinedRisk}
             disabled={riskLoading}
-            className="btn-primary py-2 px-5 text-xs font-semibold"
+            className="btn-primary w-full py-2.5"
           >
             {riskLoading ? (
-              <>
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                Fusing Signals...
-              </>
+              <><Loader2 className="h-4 w-4 animate-spin" /> Computing Risk...</>
             ) : (
-              <>
-                <Activity className="h-3.5 w-3.5" />
-                Compute Risk Assessment
-              </>
+              <><Activity className="h-4 w-4" /> Recompute Risk from Weather</>
             )}
           </button>
         </div>
+      </Section>
 
-        {riskError && (
-          <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
-            <span>{riskError}</span>
+      {/* ── Section 2: Rainfall Forecast (LSTM) ── */}
+      <Section title="Rainfall Forecast (LSTM)" icon={CloudRain} iconColor="text-cyan-400" defaultOpen={false}>
+        <div className="pt-4 space-y-4">
+          <p className="text-xs text-slate-400">
+            Provide the last 14 days of rainfall (mm/day), oldest first.
+            The LSTM model estimates tomorrow's rainfall and feeds into the risk engine.
+          </p>
+
+          <div className="grid grid-cols-7 gap-2">
+            {rainfallValues.map((val, i) => (
+              <div key={i} className="space-y-0.5">
+                <label className="text-[10px] font-mono text-slate-600 block text-center">
+                  {i === 13 ? 'Today' : i === 12 ? 'Yday' : `D-${13 - i}`}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="500"
+                  value={val}
+                  onChange={(e) => {
+                    const next = [...rainfallValues]
+                    next[i] = e.target.value
+                    setRainfallValues(next)
+                  }}
+                  placeholder="0"
+                  className="input-control text-center text-xs py-1.5 px-1"
+                />
+              </div>
+            ))}
           </div>
-        )}
 
-        {riskResult ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-            {/* Risk Gauge Card */}
-            <div className="p-5 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col items-center justify-center text-center space-y-2">
-              <span className="text-xs font-mono uppercase text-slate-400">Calculated Disaster Risk</span>
-              <div className="flex items-baseline gap-1 my-1">
-                <span className={`text-5xl font-bold font-mono ${
-                  riskResult.risk_level === 'Critical' ? 'text-red-400' :
-                  riskResult.risk_level === 'High' ? 'text-orange-400' :
-                  riskResult.risk_level === 'Moderate' ? 'text-amber-400' : 'text-emerald-400'
+          <button
+            onClick={submitRainfall}
+            disabled={rainfallLoading}
+            className="btn-primary w-full py-2.5"
+          >
+            {rainfallLoading ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Running LSTM...</>
+            ) : (
+              <><BarChart3 className="h-4 w-4" /> Run Rainfall Forecast</>
+            )}
+          </button>
+
+          {rainfallResult && !rainfallResult.error && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg bg-slate-950/70 border border-blue-500/30 text-center">
+                <p className="text-[10px] font-mono text-slate-500 uppercase mb-1">Tomorrow</p>
+                <p className="text-2xl font-bold font-mono text-blue-400">{rainfallResult.tomorrow_mm?.toFixed(1)}</p>
+                <p className="text-[10px] font-mono text-slate-500">mm estimated</p>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800 text-center">
+                <p className="text-[10px] font-mono text-slate-500 uppercase mb-1">3-Day Total</p>
+                <p className="text-2xl font-bold font-mono text-slate-200">
+                  {rainfallResult.next_3_days_mm?.reduce((a, b) => a + b, 0).toFixed(1)}
+                </p>
+                <p className="text-[10px] font-mono text-slate-500">mm estimated</p>
+              </div>
+              <div className="col-span-2 text-[10px] text-slate-600 text-center">
+                Estimates are based on historical pattern learning. Actual rainfall may differ.
+              </div>
+            </div>
+          )}
+          {rainfallResult?.error && (
+            <p className="text-xs text-amber-400 p-3 bg-amber-500/5 rounded border border-amber-500/25">
+              ⚠️ {rainfallResult.error}
+            </p>
+          )}
+        </div>
+      </Section>
+
+      {/* ── Section 3: Visual Check (Optional, secondary) ── */}
+      <Section title="Optional: Visual Flood Check (Image)" icon={Camera} iconColor="text-purple-400" defaultOpen={false}>
+        <div className="pt-4 space-y-4">
+          {/* Disclaimer */}
+          <div className="p-3 rounded-lg bg-amber-500/8 border border-amber-500/20 text-[11px] text-amber-300 leading-relaxed flex items-start gap-2">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-400" />
+            <span>
+              Image analysis is <strong>optional supporting evidence only</strong> (15% of risk score).
+              The system can provide a full risk assessment <strong>without any image</strong>.
+              Requires a trained flood image model to function.
+            </span>
+          </div>
+
+          {/* Upload area */}
+          <div
+            onClick={() => fileRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
+              ${imageFile ? 'border-purple-500/50 bg-purple-500/5' : 'border-slate-700 hover:border-slate-600 bg-slate-900/50'}`}
+          >
+            {imagePreview ? (
+              <img src={imagePreview} alt="Preview" className="max-h-44 mx-auto rounded-lg object-contain" />
+            ) : (
+              <div className="space-y-2">
+                <Upload className="h-8 w-8 text-slate-600 mx-auto" />
+                <p className="text-sm text-slate-400">Drop an aerial or ground-level flood photo</p>
+                <p className="text-xs text-slate-600">PNG, JPG, WEBP · max 10 MB</p>
+              </div>
+            )}
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          </div>
+
+          {imageFile && (
+            <button
+              onClick={submitImage}
+              disabled={imageLoading}
+              className="btn-primary w-full py-2.5"
+            >
+              {imageLoading ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Classifying...</>
+              ) : (
+                <><Image className="h-4 w-4" /> Classify Image</>
+              )}
+            </button>
+          )}
+
+          {imageResult && !imageResult.error && (
+            <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/60 space-y-2">
+              <div className="flex items-center gap-2">
+                {imageResult.prediction === 'Flood' ? (
+                  <AlertTriangle className="h-5 w-5 text-orange-400" />
+                ) : (
+                  <CheckCircle className="h-5 w-5 text-emerald-400" />
+                )}
+                <span className={`text-sm font-bold font-mono ${
+                  imageResult.prediction === 'Flood' ? 'text-orange-400' : 'text-emerald-400'
                 }`}>
-                  {riskResult.risk_score}
+                  {imageResult.prediction}
                 </span>
-                <span className="text-slate-500 font-mono text-lg">/ 100</span>
+                <span className="text-xs font-mono text-slate-400 ml-auto">
+                  {(imageResult.confidence * 100).toFixed(1)}% confidence
+                </span>
               </div>
-              <span className={`risk-badge-${riskResult.risk_level.toLowerCase()}`}>
-                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                {riskResult.risk_level} Risk Priority
-              </span>
-            </div>
-
-            {/* Telemetry Breakdown */}
-            <div className="space-y-3 p-4 rounded-xl bg-slate-950/40 border border-slate-800/80 text-xs">
-              <span className="font-mono uppercase text-slate-400 block font-semibold">Sensor Factor Weights</span>
-              <div className="space-y-2 font-mono">
-                <div>
-                  <div className="flex justify-between text-slate-300">
-                    <span>Optical Surface Flood</span>
-                    <span className="text-slate-400">40% Weight</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full mt-1 overflow-hidden">
-                    <div className="h-full bg-blue-500" style={{ width: '40%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-slate-300">
-                    <span>Precipitation Forecast</span>
-                    <span className="text-slate-400">35% Weight</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full mt-1 overflow-hidden">
-                    <div className="h-full bg-cyan-500" style={{ width: '35%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between text-slate-300">
-                    <span>Live Station Weather</span>
-                    <span className="text-slate-400">25% Weight</span>
-                  </div>
-                  <div className="h-1.5 bg-slate-800 rounded-full mt-1 overflow-hidden">
-                    <div className="h-full bg-indigo-500" style={{ width: '25%' }} />
-                  </div>
-                </div>
+              <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${imageResult.prediction === 'Flood' ? 'bg-orange-500' : 'bg-emerald-500'}`}
+                  style={{ width: `${(imageResult.confidence * 100).toFixed(0)}%` }}
+                />
               </div>
+              <p className="text-[10px] text-slate-600">
+                Image evidence accounts for ~15% of combined risk score when available.
+              </p>
             </div>
-
-            {/* Protocol Action Checklist */}
-            <div className="space-y-2 p-4 rounded-xl bg-slate-950/40 border border-slate-800/80 text-xs">
-              <span className="font-mono uppercase text-slate-400 block font-semibold">Recommended Protocol</span>
-              <ul className="space-y-2 text-slate-300">
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>
-                    {riskResult.risk_level === 'Critical' ? 'Deploy emergency evacuation & rescue teams immediately.' :
-                     riskResult.risk_level === 'High' ? 'Issue flood warning to low-lying sectors and preposition shelters.' :
-                     riskResult.risk_level === 'Moderate' ? 'Alert municipal drainage response teams for active monitoring.' :
-                     'Nominal conditions. Maintain standard environmental telemetry.'}
-                  </span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <span>Log incident risk index to persistent database history.</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-8 text-slate-500 text-xs font-mono space-y-1">
-            <ShieldAlert className="h-7 w-7 mx-auto text-slate-600 mb-2" />
-            <p>Awaiting risk execution trigger</p>
-            <p className="text-slate-600">Complete Steps 1 & 2 above or click "Compute Risk Assessment" to evaluate live weather.</p>
-          </div>
-        )}
-      </div>
+          )}
+          {imageResult?.error && (
+            <p className="text-xs text-amber-400 p-3 bg-amber-500/5 rounded border border-amber-500/25">
+              ⚠️ {imageResult.error}
+            </p>
+          )}
+        </div>
+      </Section>
     </div>
   )
 }
