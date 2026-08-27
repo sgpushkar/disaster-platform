@@ -77,8 +77,8 @@ export default function Alerts() {
               onClick={() => setFilter(level)}
               className={`px-3 py-1.5 rounded-lg font-mono font-medium transition-all ${
                 filter === level
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                  : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
+                  ? 'bg-red-600 text-white font-bold shadow-sm'
+                  : 'bg-slate-900 border border-slate-800 text-zinc-400 hover:text-zinc-200'
               }`}
             >
               {level}
@@ -94,8 +94,8 @@ export default function Alerts() {
               onClick={() => setSourceFilter(src)}
               className={`px-3 py-1.5 rounded-lg font-mono font-medium transition-all flex items-center gap-1 ${
                 sourceFilter === src
-                  ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                  : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
+                  ? 'bg-red-600 text-white font-bold shadow-sm'
+                  : 'bg-slate-900 border border-slate-800 text-zinc-400 hover:text-zinc-200'
               }`}
             >
               {src === 'AI' && <Bot className="h-3 w-3" />}
@@ -107,7 +107,7 @@ export default function Alerts() {
 
         {/* Search */}
         <div className="relative">
-          <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
             type="text"
             value={search}
@@ -119,16 +119,16 @@ export default function Alerts() {
       </div>
 
       {error && (
-        <div className="card-panel p-3.5 border-amber-500/30 bg-amber-500/5 flex items-start gap-2 text-xs text-amber-300">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+        <div className="card-panel p-3.5 border-red-500/30 bg-red-500/5 flex items-start gap-2 text-xs text-red-300">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
           <span>{error}</span>
         </div>
       )}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-2">
-          <div className="h-7 w-7 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
-          <p className="text-xs font-mono text-slate-500">LOADING INCIDENT ALERTS...</p>
+          <div className="h-7 w-7 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
+          <p className="text-xs font-mono text-zinc-500">LOADING INCIDENT ALERTS...</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="card-panel p-12 text-center space-y-2">
@@ -205,10 +205,10 @@ export default function Alerts() {
                   {/* Recommended action */}
                   {alert.recommended_action && (
                     <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 flex items-start gap-2">
-                      <Info className="h-3.5 w-3.5 text-blue-400 shrink-0 mt-0.5" />
+                      <Info className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-[10px] font-mono text-slate-500 uppercase mb-0.5">Recommended Action</p>
-                        <p className="text-xs text-slate-300 leading-relaxed">{alert.recommended_action}</p>
+                        <p className="text-[10px] font-mono text-zinc-500 uppercase mb-0.5">Recommended Action</p>
+                        <p className="text-xs text-zinc-300 leading-relaxed">{alert.recommended_action}</p>
                       </div>
                     </div>
                   )}

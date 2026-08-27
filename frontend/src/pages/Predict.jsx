@@ -7,7 +7,7 @@ import {
 import api from '../services/api'
 import RiskGauge from '../components/RiskGauge.jsx'
 
-function Section({ title, icon: Icon, iconColor = 'text-amber-400', children, defaultOpen = true }) {
+function Section({ title, icon: Icon, iconColor = 'text-red-500', children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className="card-panel overflow-hidden">
@@ -15,11 +15,11 @@ function Section({ title, icon: Icon, iconColor = 'text-amber-400', children, de
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-4 hover:bg-slate-800/40 transition-colors"
       >
-        <span className="flex items-center gap-2 text-sm font-bold font-mono uppercase text-slate-200">
+        <span className="flex items-center gap-2 text-sm font-bold font-mono uppercase text-zinc-200">
           <Icon className={`h-4 w-4 ${iconColor}`} />
           {title}
         </span>
-        {open ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
+        {open ? <ChevronUp className="h-4 w-4 text-zinc-500" /> : <ChevronDown className="h-4 w-4 text-zinc-500" />}
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -29,7 +29,7 @@ function Section({ title, icon: Icon, iconColor = 'text-amber-400', children, de
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25 }}
           >
-            <div className="px-4 pb-4 pt-0 border-t border-slate-800">{children}</div>
+            <div className="px-5 pb-5 border-t border-slate-800">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -119,11 +119,11 @@ export default function Predict() {
       <div className="pb-4 border-b border-slate-800">
         <div className="flex items-center gap-2 mb-1">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Hazard Analysis</h1>
-          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/10 text-red-400 border border-red-500/20">
             AI ESTIMATION ENGINE
           </span>
         </div>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-zinc-400">
           Environmental risk assessment using weather conditions and rainfall signals.
           Image evidence is <strong>optional</strong> and used as secondary supporting telemetry.
         </p>
@@ -132,8 +132,8 @@ export default function Predict() {
       {/* ── Section 1: Current Environmental Risk (Primary) ── */}
       <Section title="Current Environmental Risk" icon={ShieldAlert} defaultOpen>
         <div className="pt-4 space-y-4">
-          <div className="p-3 rounded-lg bg-amber-500/8 border border-amber-500/20 text-xs text-amber-300 leading-relaxed flex items-start gap-2">
-            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-400" />
+          <div className="p-3 rounded-lg bg-red-500/8 border border-red-500/20 text-xs text-red-300 leading-relaxed flex items-start gap-2">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-red-400" />
             <span>
               Calculates risk from <strong>live weather + precipitation forecast</strong>. 
               No visual imagery required. Risk output is an <em>empirical estimate</em>.
@@ -150,7 +150,7 @@ export default function Predict() {
                   size="lg"
                 />
                 {riskResult.recommendation && (
-                  <p className="text-xs text-slate-400 text-center leading-relaxed max-w-md">
+                  <p className="text-xs text-zinc-400 text-center leading-relaxed max-w-md">
                     {riskResult.recommendation}
                   </p>
                 )}
@@ -159,20 +159,20 @@ export default function Predict() {
               {/* Contributing factors */}
               {riskResult.contributing_factors?.length > 0 && (
                 <div className="space-y-2.5">
-                  <p className="text-[11px] font-mono uppercase text-slate-500">Decomposition Signals</p>
+                  <p className="text-[11px] font-mono uppercase text-zinc-500">Decomposition Signals</p>
                   {riskResult.contributing_factors.map((f) => (
                     <div key={f.key}>
                       <div className="flex justify-between text-[11px] font-mono mb-1">
-                        <span className="text-slate-300">{f.label}</span>
-                        <span className="text-amber-400 font-semibold">{f.score}/100 · {f.weight_pct}%</span>
+                        <span className="text-zinc-300">{f.label}</span>
+                        <span className="text-red-400 font-semibold">{f.score}/100 · {f.weight_pct}%</span>
                       </div>
                       <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-amber-500 rounded-full transition-all duration-700"
+                          className="h-full bg-red-600 rounded-full transition-all duration-700"
                           style={{ width: `${Math.min(100, f.score)}%` }}
                         />
                       </div>
-                      <p className="text-[10px] text-slate-600 mt-0.5">{f.description}</p>
+                      <p className="text-[10px] text-zinc-500 mt-0.5">{f.description}</p>
                     </div>
                   ))}
                 </div>
@@ -249,10 +249,10 @@ export default function Predict() {
 
           {rainfallResult && !rainfallResult.error && (
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-slate-950/70 border border-blue-500/30 text-center">
-                <p className="text-[10px] font-mono text-slate-500 uppercase mb-1">Tomorrow</p>
-                <p className="text-2xl font-bold font-mono text-blue-400">{rainfallResult.tomorrow_mm?.toFixed(1)}</p>
-                <p className="text-[10px] font-mono text-slate-500">mm estimated</p>
+              <div className="p-3 rounded-lg bg-slate-950/70 border border-red-500/30 text-center">
+                <p className="text-[10px] font-mono text-zinc-500 uppercase mb-1">Tomorrow</p>
+                <p className="text-2xl font-bold font-mono text-red-400">{rainfallResult.tomorrow_mm?.toFixed(1)}</p>
+                <p className="text-[10px] font-mono text-zinc-500">mm estimated</p>
               </div>
               <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800 text-center">
                 <p className="text-[10px] font-mono text-slate-500 uppercase mb-1">3-Day Total</p>
@@ -267,7 +267,7 @@ export default function Predict() {
             </div>
           )}
           {rainfallResult?.error && (
-            <p className="text-xs text-amber-400 p-3 bg-amber-500/5 rounded border border-amber-500/25">
+            <p className="text-xs text-red-300 p-3 bg-red-500/5 rounded border border-red-500/25">
               ⚠️ {rainfallResult.error}
             </p>
           )}
@@ -275,11 +275,11 @@ export default function Predict() {
       </Section>
 
       {/* ── Section 3: Visual Check (Optional, secondary) ── */}
-      <Section title="Optional: Visual Flood Check (Image)" icon={Camera} iconColor="text-purple-400" defaultOpen={false}>
+      <Section title="Optional: Visual Flood Check (Image)" icon={Camera} iconColor="text-zinc-400" defaultOpen={false}>
         <div className="pt-4 space-y-4">
           {/* Disclaimer */}
-          <div className="p-3 rounded-lg bg-amber-500/8 border border-amber-500/20 text-[11px] text-amber-300 leading-relaxed flex items-start gap-2">
-            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-400" />
+          <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-zinc-400 leading-relaxed flex items-start gap-2">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-zinc-400" />
             <span>
               Image analysis is <strong>optional supporting evidence only</strong> (15% of risk score).
               The system can provide a full risk assessment <strong>without any image</strong>.
@@ -348,7 +348,7 @@ export default function Predict() {
             </div>
           )}
           {imageResult?.error && (
-            <p className="text-xs text-amber-400 p-3 bg-amber-500/5 rounded border border-amber-500/25">
+            <p className="text-xs text-red-300 p-3 bg-red-500/5 rounded border border-red-500/25">
               ⚠️ {imageResult.error}
             </p>
           )}
