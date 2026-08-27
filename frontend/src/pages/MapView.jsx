@@ -24,8 +24,8 @@ const createCustomIcon = (color, emoji = '●') =>
 const userPinIcon = L.divIcon({
   className: '',
   html: `<div style="
-    width:20px;height:20px;background:#3b82f6;border-radius:50%;
-    border:3px solid white;box-shadow:0 0 0 5px rgba(59,130,246,0.25),0 3px 10px rgba(0,0,0,0.5);">
+    width:20px;height:20px;background:#f59e0b;border-radius:50%;
+    border:2.5px solid white;box-shadow:0 0 0 5px rgba(245,158,11,0.25),0 3px 10px rgba(0,0,0,0.5);">
   </div>`,
   iconSize: [20, 20], iconAnchor: [10, 10],
 })
@@ -33,19 +33,19 @@ const userPinIcon = L.divIcon({
 const markerIcons = {
   hospital:     createCustomIcon('#ef4444', '🏥'),
   shelter:      createCustomIcon('#10b981', '🏠'),
-  police:       createCustomIcon('#3b82f6', '👮'),
+  police:       createCustomIcon('#0ea5e9', '👮'),
   fire_station: createCustomIcon('#f97316', '🔥'),
   safe_zone:    createCustomIcon('#06b6d4', '✅'),
-  danger_zone:  createCustomIcon('#f97316', '⚠'),
+  danger_zone:  createCustomIcon('#e11d48', '⚠'),
 }
 
 const typeDetails = {
   hospital:     { label: 'Hospitals', color: '#ef4444', icon: Building2 },
   shelter:      { label: 'Shelters', color: '#10b981', icon: Home },
-  police:       { label: 'Police Stations', color: '#3b82f6', icon: ShieldAlert },
+  police:       { label: 'Police Stations', color: '#0ea5e9', icon: ShieldAlert },
   fire_station: { label: 'Fire Stations', color: '#f97316', icon: Flame },
   safe_zone:    { label: 'Safe Zones', color: '#06b6d4', icon: Shield },
-  danger_zone:  { label: 'Danger Zones', color: '#dc2626', icon: AlertTriangle },
+  danger_zone:  { label: 'Danger Zones', color: '#e11d48', icon: AlertTriangle },
 }
 
 export default function MapView() {
@@ -56,7 +56,7 @@ export default function MapView() {
   const [error, setError] = useState('')
   const [userLoc, setUserLoc] = useState(null)
 
-  const defaultCenter = [18.5204, 73.8567]
+  const defaultCenter = [19.0760, 72.8777]
 
   useEffect(() => {
     // Load locations
@@ -98,18 +98,18 @@ export default function MapView() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Emergency Map</h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              GIS LIVE
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Emergency GIS</h1>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              TACTICAL GRID
             </span>
             {dangerZones.length > 0 && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/15 text-red-400 border border-red-500/25">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-500/15 text-rose-400 border border-rose-500/25">
                 {dangerZones.length} DANGER ZONE{dangerZones.length > 1 ? 'S' : ''}
               </span>
             )}
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Live emergency infrastructure, danger zones, shelters, and evacuation context.
+            Emergency civil infrastructure, hazard zones, and evacuation routes.
           </p>
         </div>
         <div className="w-full lg:w-72 relative">
@@ -118,7 +118,7 @@ export default function MapView() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search facility..."
+            placeholder="Search emergency facility..."
             className="input-control pl-9 text-xs"
           />
         </div>
@@ -128,8 +128,8 @@ export default function MapView() {
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
         <button
           onClick={() => setFilter('all')}
-          className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 shrink-0 ${
-            filter === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
+          className={`px-3 py-1.5 rounded-lg font-mono font-medium transition-all flex items-center gap-1.5 shrink-0 ${
+            filter === 'all' ? 'bg-amber-500 text-slate-950 font-bold shadow-sm' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
           }`}
         >
           <Layers className="h-3.5 w-3.5" />
@@ -141,11 +141,11 @@ export default function MapView() {
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 shrink-0 ${
-                filter === key ? 'bg-blue-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
+              className={`px-3 py-1.5 rounded-lg font-mono font-medium transition-all flex items-center gap-1.5 shrink-0 ${
+                filter === key ? 'bg-amber-500 text-slate-950 font-bold shadow-sm' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Icon className="h-3.5 w-3.5" style={{ color: filter === key ? 'white' : info.color }} />
+              <Icon className="h-3.5 w-3.5" style={{ color: filter === key ? '#08090c' : info.color }} />
               {info.label} ({counts[key] ?? 0})
             </button>
           )

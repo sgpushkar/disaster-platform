@@ -12,7 +12,7 @@ import api from '../services/api'
 const TYPE_ICONS = {
   shelter: { icon: Home, color: '#10b981', label: 'Evacuation Shelter' },
   hospital: { icon: Building2, color: '#ef4444', label: 'Hospital' },
-  safe_zone: { icon: Shield, color: '#3b82f6', label: 'Safe Zone' },
+  safe_zone: { icon: Shield, color: '#06b6d4', label: 'Safe Zone' },
   fire_station: { icon: Flame, color: '#f97316', label: 'Fire Station' },
 }
 
@@ -21,7 +21,7 @@ const createPinIcon = (color, letter) =>
     className: '',
     html: `<div style="
       background:${color};width:32px;height:32px;border-radius:50% 50% 50% 0;
-      transform:rotate(-45deg);border:3px solid white;box-shadow:0 4px 12px rgba(0,0,0,0.4);
+      transform:rotate(-45deg);border:2.5px solid #11141b;box-shadow:0 4px 12px rgba(0,0,0,0.5);
       display:flex;align-items:center;justify-content:center;">
       <span style="transform:rotate(45deg);color:white;font-weight:bold;font-size:12px">${letter}</span>
     </div>`,
@@ -31,8 +31,8 @@ const createPinIcon = (color, letter) =>
 const userIcon = L.divIcon({
   className: '',
   html: `<div style="
-    width:18px;height:18px;background:#3b82f6;border-radius:50%;
-    border:3px solid white;box-shadow:0 0 0 4px rgba(59,130,246,0.25),0 2px 8px rgba(0,0,0,0.4)">
+    width:18px;height:18px;background:#f59e0b;border-radius:50%;
+    border:2.5px solid #ffffff;box-shadow:0 0 0 4px rgba(245,158,11,0.25),0 2px 8px rgba(0,0,0,0.5)">
   </div>`,
   iconSize: [18, 18], iconAnchor: [9, 9],
 })
@@ -182,7 +182,7 @@ export default function SafeAreas() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05 }}
                   className={`card-panel p-4 cursor-pointer transition-all ${
-                    isSelected ? 'border-blue-500/50 bg-blue-500/5' : 'hover:border-slate-700'
+                    isSelected ? 'border-amber-500/50 bg-amber-500/5' : 'hover:border-slate-700'
                   }`}
                   onClick={() => setSelected(isSelected ? null : result)}
                 >
@@ -203,7 +203,7 @@ export default function SafeAreas() {
                             <p className="text-sm font-semibold text-white truncate">{result.location.name}</p>
                             {i === 0 && (
                               <span className="text-[9px] font-bold font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0">
-                                TOP
+                                TOP SAFETY
                               </span>
                             )}
                           </div>
@@ -213,28 +213,28 @@ export default function SafeAreas() {
                           <p className={`text-lg font-bold font-mono ${SCORE_COLOR(result.safety_score)}`}>
                             {result.safety_score}
                           </p>
-                          <p className="text-[9px] font-mono text-slate-500">SAFETY</p>
+                          <p className="text-[9px] font-mono text-slate-500">SCORE</p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3 mt-2 text-[11px] font-mono text-slate-400">
                         <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" /> {result.distance_km} km
+                          <MapPin className="h-3 w-3 text-amber-500" /> {result.distance_km} km
                         </span>
                         <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" /> ~{result.estimated_minutes} min
+                          <Clock className="h-3 w-3 text-slate-400" /> ~{result.estimated_minutes} min
                         </span>
                         <span className={`px-1.5 py-0.5 rounded text-[10px] border ${
                           result.destination_risk === 'Low' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                           result.destination_risk === 'Moderate' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                          'bg-red-500/10 text-red-400 border-red-500/20'
+                          'bg-rose-500/10 text-rose-400 border-rose-500/20'
                         }`}>
-                          {result.destination_risk} Risk
+                          {result.destination_risk} Hazard
                         </span>
                       </div>
 
                       {result.reason && (
-                        <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">{result.reason}</p>
+                        <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">{result.reason}</p>
                       )}
 
                       {/* Availability */}
@@ -242,7 +242,7 @@ export default function SafeAreas() {
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className={`h-1.5 w-1.5 rounded-full ${
                             result.location.availability_status === 'open' ? 'bg-emerald-400' :
-                            result.location.availability_status === 'full' ? 'bg-red-400' : 'bg-slate-500'
+                            result.location.availability_status === 'full' ? 'bg-rose-400' : 'bg-slate-500'
                           }`} />
                           <span className="text-[10px] font-mono text-slate-500 capitalize">
                             {result.location.availability_status}
@@ -257,14 +257,14 @@ export default function SafeAreas() {
                           onClick={(e) => { e.stopPropagation(); fetchRoute(result) }}
                           disabled={routeLoading && selected?.location?.id === result.location.id}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                            bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-50"
+                            bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all disabled:opacity-50 shadow-sm"
                         >
                           {routeLoading && selected?.location?.id === result.location.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
                             <Navigation className="h-3 w-3" />
                           )}
-                          View Route
+                          Route Telemetry
                         </button>
                         {result.location.contact && (
                           <a
@@ -274,7 +274,7 @@ export default function SafeAreas() {
                               bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition-all"
                           >
                             <Phone className="h-3 w-3" />
-                            Call
+                            Dispatch
                           </a>
                         )}
                       </div>
@@ -331,7 +331,7 @@ export default function SafeAreas() {
                           <span>🛡️ {result.safety_score}/100</span>
                         </div>
                         {result.location.contact && (
-                          <p className="text-[11px] text-blue-400">📞 {result.location.contact}</p>
+                          <p className="text-[11px] text-amber-400 font-mono">📞 {result.location.contact}</p>
                         )}
                       </div>
                     </Popup>
@@ -343,22 +343,22 @@ export default function SafeAreas() {
               {route?.route_coordinates?.length > 1 && (
                 <Polyline
                   positions={route.route_coordinates}
-                  pathOptions={{ color: '#3b82f6', weight: 4, dashArray: route.provider === 'straight_line' ? '8 6' : null }}
+                  pathOptions={{ color: '#f59e0b', weight: 4, dashArray: route.provider === 'straight_line' ? '8 6' : null }}
                 />
               )}
             </MapContainer>
 
             {/* Route info */}
             {route && (
-              <div className="mt-2 p-3 rounded-lg bg-slate-950/80 border border-blue-500/30 text-xs space-y-1.5">
+              <div className="mt-2 p-3 rounded-lg bg-slate-950/90 border border-amber-500/30 text-xs space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-blue-300">Route to {route.to_name}</span>
+                  <span className="font-bold text-amber-300 font-mono">Route Vector: {route.to_name}</span>
                   <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
                     route.provider === 'osrm'
                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
                       : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
                   }`}>
-                    {route.provider === 'osrm' ? 'Road Route' : 'Estimate Only'}
+                    {route.provider === 'osrm' ? 'Road Network' : 'Estimate Only'}
                   </span>
                 </div>
                 <div className="flex gap-4 font-mono text-slate-300">
