@@ -2,10 +2,10 @@ import React from 'react'
 import { motion } from 'framer-motion'
 
 const LEVEL_CONFIG = {
-  Low: { color: '#10b981', bg: 'rgba(16,185,129,0.12)', label: 'LOW', textColor: 'text-emerald-400' },
-  Moderate: { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: 'MODERATE', textColor: 'text-amber-400' },
-  High: { color: '#f97316', bg: 'rgba(249,115,22,0.12)', label: 'HIGH', textColor: 'text-orange-400' },
-  Critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.14)', label: 'CRITICAL', textColor: 'text-red-400' },
+  Low: { color: '#10b981', bg: 'rgba(16,185,129,0.12)', label: 'LOW RISK', textColor: 'text-emerald-400' },
+  Moderate: { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: 'MODERATE RISK', textColor: 'text-amber-400' },
+  High: { color: '#f97316', bg: 'rgba(249,115,22,0.12)', label: 'HIGH RISK', textColor: 'text-orange-400' },
+  Critical: { color: '#e11d48', bg: 'rgba(225,29,72,0.15)', label: 'CRITICAL RISK', textColor: 'text-rose-400' },
 }
 
 const TREND_ICONS = {
@@ -22,9 +22,9 @@ export default function RiskGauge({ riskScore = 0, riskLevel = 'Low', riskTrend 
 
   // SVG arc parameters
   const isLarge = size === 'lg'
-  const radius = isLarge ? 70 : 52
-  const stroke = isLarge ? 10 : 8
-  const svgSize = isLarge ? 180 : 136
+  const radius = isLarge ? 68 : 50
+  const stroke = isLarge ? 9 : 7
+  const svgSize = isLarge ? 176 : 132
   const cx = svgSize / 2
   const cy = svgSize / 2
 
@@ -33,7 +33,6 @@ export default function RiskGauge({ riskScore = 0, riskLevel = 'Low', riskTrend 
   const startAngle = 150
   const circumference = 2 * Math.PI * radius
   const arcLength = (arcDeg / 360) * circumference
-  const filled = (riskScore / 100) * arcLength
 
   // Convert angle to SVG coords
   const polarToCartesian = (cx, cy, r, angleDeg) => {
@@ -52,23 +51,48 @@ export default function RiskGauge({ riskScore = 0, riskLevel = 'Low', riskTrend 
   const trackPath = describeArc(cx, cy, radius, startAngle, endAngle)
 
   // Filled arc: from startAngle to startAngle + (riskScore/100)*arcDeg
-  const filledDeg = (riskScore / 100) * arcDeg
+  const filledDeg = (Math.max(0, Math.min(100, riskScore)) / 100) * arcDeg
   const filledEnd = startAngle + filledDeg
   const filledPath = filledDeg > 0.5 ? describeArc(cx, cy, radius, startAngle, Math.min(filledEnd, endAngle)) : null
+
+  // Tick marks at 25%, 50%, 75%
+  const ticks = [0.25, 0.5, 0.75].map((pct) => {
+    const angle = startAngle + pct * arcDeg
+    const p1 = polarToCartesian(cx, cy, radius - stroke / 2 - 2, angle)
+    const p2 = polarToCartesian(cx, cy, radius + stroke / 2 + 2, angle)
+    return { p1, p2, pct }
+  })
 
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="relative">
         <svg width={svgSize} height={svgSize * 0.78} viewBox={`0 0 ${svgSize} ${svgSize}`} style={{ overflow: 'visible' }}>
-          {/* Track */}
+          {/* Subtle background glow */}
+          <circle cx={cx} cy={cy} r={radius * 0.7} fill={cfg.color} opacity="0.03" />
+
+          {/* Carbon Instrument Track */}
           <path
             d={trackPath}
-            stroke="#1e293b"
+            stroke="#1a1e27"
             strokeWidth={stroke}
             fill="none"
             strokeLinecap="round"
           />
-          {/* Filled Arc */}
+
+          {/* Ticks */}
+          {ticks.map((t, idx) => (
+            <line
+              key={idx}
+              x1={t.p1.x}
+              y1={t.p1.y}
+              x2={t.p2.x}
+              y2={t.p2.y}
+              stroke="#2c3342"
+              strokeWidth="1.5"
+            />
+          ))}
+
+          {/* Calibrated Filled Arc */}
           {filledPath && (
             <motion.path
               d={filledPath}
@@ -78,50 +102,53 @@ export default function RiskGauge({ riskScore = 0, riskLevel = 'Low', riskTrend 
               strokeLinecap="round"
               initial={{ pathLength: 0, opacity: 0 }}
               animate={{ pathLength: 1, opacity: 1 }}
-              transition={{ duration: 1.2, ease: 'easeOut', delay: 0.2 }}
-              style={{ filter: `drop-shadow(0 0 6px ${cfg.color}60)` }}
+              transition={{ duration: 1.0, ease: 'easeOut' }}
+              style={{ filter: `drop-shadow(0 0 5px ${cfg.color}50)` }}
             />
           )}
-          {/* Center text */}
+
+          {/* Numeric Value */}
           <text
             x={cx}
             y={cy - 4}
             textAnchor="middle"
-            fontSize={isLarge ? 28 : 22}
-            fontWeight="bold"
+            fontSize={isLarge ? 30 : 22}
+            fontWeight="700"
             fontFamily="JetBrains Mono, monospace"
-            fill={cfg.color}
+            fill="#f8fafc"
           >
             {riskScore}
           </text>
           <text
             x={cx}
-            y={cy + (isLarge ? 18 : 14)}
+            y={cy + (isLarge ? 17 : 13)}
             textAnchor="middle"
-            fontSize={isLarge ? 11 : 9}
+            fontSize={isLarge ? 10 : 8}
             fontFamily="JetBrains Mono, monospace"
+            fontWeight="500"
             fill="#64748b"
+            letterSpacing="1"
           >
-            / 100
+            SCORE / 100
           </text>
         </svg>
       </div>
 
-      {/* Level + Trend badges */}
+      {/* Mission Level & Trajectory */}
       <div className="flex flex-col items-center gap-1">
-        <span className={`text-xs font-bold font-mono px-3 py-1 rounded-full border
-          ${riskLevel === 'Critical' ? 'bg-red-500/15 text-red-400 border-red-500/30 animate-pulse' :
-            riskLevel === 'High' ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' :
-            riskLevel === 'Moderate' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' :
+        <span className={`text-[11px] font-bold font-mono px-3 py-0.5 rounded border tracking-wider
+          ${riskLevel === 'Critical' ? 'bg-rose-500/15 text-rose-400 border-rose-500/35 animate-pulse' :
+            riskLevel === 'High' ? 'bg-orange-500/15 text-orange-400 border-orange-500/35' :
+            riskLevel === 'Moderate' ? 'bg-amber-500/15 text-amber-400 border-amber-500/35' :
             'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
           }`}>
           {cfg.label}
         </span>
         {riskTrend !== 'UNKNOWN' && (
-          <span className={`text-[11px] font-mono ${
-            riskTrend === 'RAPIDLY_INCREASING' ? 'text-red-400' :
-            riskTrend === 'INCREASING' ? 'text-orange-400' :
-            riskTrend === 'DECREASING' ? 'text-emerald-400' : 'text-slate-400'
+          <span className={`text-[10px] font-mono ${
+            riskTrend === 'RAPIDLY_INCREASING' ? 'text-rose-400 font-semibold' :
+            riskTrend === 'INCREASING' ? 'text-amber-400' :
+            riskTrend === 'DECREASING' ? 'text-emerald-400' : 'text-slate-500'
           }`}>
             {trend} {riskTrend.replace(/_/g, ' ')}
           </span>
