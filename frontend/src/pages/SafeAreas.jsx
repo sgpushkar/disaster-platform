@@ -31,8 +31,8 @@ const createPinIcon = (color, letter) =>
 const userIcon = L.divIcon({
   className: '',
   html: `<div style="
-    width:18px;height:18px;background:#f59e0b;border-radius:50%;
-    border:2.5px solid #ffffff;box-shadow:0 0 0 4px rgba(245,158,11,0.25),0 2px 8px rgba(0,0,0,0.5)">
+    width:18px;height:18px;background:#ef4444;border-radius:50%;
+    border:2.5px solid #ffffff;box-shadow:0 0 0 4px rgba(239,68,68,0.35),0 2px 8px rgba(0,0,0,0.85)">
   </div>`,
   iconSize: [18, 18], iconAnchor: [9, 9],
 })
@@ -143,12 +143,12 @@ export default function SafeAreas() {
       </div>
 
       {error && (
-        <div className="card-panel p-4 border-amber-500/30 bg-amber-500/5 flex items-start gap-3 text-sm text-amber-300">
-          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+        <div className="card-panel p-4 border-red-500/30 bg-red-500/5 flex items-start gap-3 text-sm text-red-300">
+          <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
           <div>
-            <p>{error}</p>
-            <p className="text-xs mt-1 text-amber-400/70">
-              Tip: Go to Admin panel and click "Seed Locations" to populate Pune emergency data.
+            <p className="font-semibold">{error}</p>
+            <p className="text-xs mt-1 text-red-400/70">
+              Ensure the backend is running and emergency locations are seeded.
             </p>
           </div>
         </div>
@@ -160,8 +160,8 @@ export default function SafeAreas() {
         <div className="lg:col-span-2 space-y-3">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <Loader2 className="h-8 w-8 text-blue-400 animate-spin" />
-              <p className="text-sm text-slate-400 font-mono">Searching safe areas...</p>
+              <Loader2 className="h-8 w-8 text-red-500 animate-spin" />
+              <p className="text-sm text-zinc-400 font-mono">Searching safe areas...</p>
             </div>
           ) : results.length === 0 && !error ? (
             <div className="card-panel p-8 text-center space-y-2">
@@ -182,7 +182,7 @@ export default function SafeAreas() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05 }}
                   className={`card-panel p-4 cursor-pointer transition-all ${
-                    isSelected ? 'border-amber-500/50 bg-amber-500/5' : 'hover:border-slate-700'
+                    isSelected ? 'border-red-500/60 bg-red-500/5' : 'hover:border-slate-700'
                   }`}
                   onClick={() => setSelected(isSelected ? null : result)}
                 >
@@ -190,7 +190,7 @@ export default function SafeAreas() {
                     {/* Rank */}
                     <div className={`shrink-0 h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold font-mono border ${
                       i === 0 ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' :
-                      'bg-slate-800 border-slate-700 text-slate-400'
+                      'bg-slate-800 border-slate-700 text-zinc-400'
                     }`}>
                       {i + 1}
                     </div>
@@ -207,22 +207,22 @@ export default function SafeAreas() {
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-slate-500">{typeCfg.label}</p>
+                          <p className="text-[11px] text-zinc-500">{typeCfg.label}</p>
                         </div>
                         <div className="text-right shrink-0">
                           <p className={`text-lg font-bold font-mono ${SCORE_COLOR(result.safety_score)}`}>
                             {result.safety_score}
                           </p>
-                          <p className="text-[9px] font-mono text-slate-500">SCORE</p>
+                          <p className="text-[9px] font-mono text-zinc-500">SCORE</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 mt-2 text-[11px] font-mono text-slate-400">
+                      <div className="flex items-center gap-3 mt-2 text-[11px] font-mono text-zinc-400">
                         <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-amber-500" /> {result.distance_km} km
+                          <MapPin className="h-3 w-3 text-red-500" /> {result.distance_km} km
                         </span>
                         <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3 text-slate-400" /> ~{result.estimated_minutes} min
+                          <Clock className="h-3 w-3 text-zinc-400" /> ~{result.estimated_minutes} min
                         </span>
                         <span className={`px-1.5 py-0.5 rounded text-[10px] border ${
                           result.destination_risk === 'Low' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
@@ -234,7 +234,7 @@ export default function SafeAreas() {
                       </div>
 
                       {result.reason && (
-                        <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">{result.reason}</p>
+                        <p className="text-[11px] text-zinc-400 mt-1.5 leading-relaxed">{result.reason}</p>
                       )}
 
                       {/* Availability */}
@@ -242,9 +242,9 @@ export default function SafeAreas() {
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className={`h-1.5 w-1.5 rounded-full ${
                             result.location.availability_status === 'open' ? 'bg-emerald-400' :
-                            result.location.availability_status === 'full' ? 'bg-rose-400' : 'bg-slate-500'
+                            result.location.availability_status === 'full' ? 'bg-rose-400' : 'bg-zinc-500'
                           }`} />
-                          <span className="text-[10px] font-mono text-slate-500 capitalize">
+                          <span className="text-[10px] font-mono text-zinc-500 capitalize">
                             {result.location.availability_status}
                             {result.location.capacity && ` · Capacity: ${result.location.capacity}`}
                           </span>
@@ -257,7 +257,7 @@ export default function SafeAreas() {
                           onClick={(e) => { e.stopPropagation(); fetchRoute(result) }}
                           disabled={routeLoading && selected?.location?.id === result.location.id}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                            bg-amber-500 hover:bg-amber-400 text-slate-950 transition-all disabled:opacity-50 shadow-sm"
+                            bg-red-600 hover:bg-red-500 text-white transition-all disabled:opacity-50 shadow-sm"
                         >
                           {routeLoading && selected?.location?.id === result.location.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
@@ -271,7 +271,7 @@ export default function SafeAreas() {
                             href={`tel:${result.location.contact}`}
                             onClick={e => e.stopPropagation()}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                              bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition-all"
+                              bg-slate-800 hover:bg-slate-700 border border-slate-700 text-zinc-200 transition-all"
                           >
                             <Phone className="h-3 w-3" />
                             Dispatch
@@ -295,8 +295,8 @@ export default function SafeAreas() {
               className="h-[520px] w-full rounded-lg"
             >
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
               />
               {userLoc && <MapUpdater center={[userLoc.lat, userLoc.lon]} />}
 
@@ -331,7 +331,7 @@ export default function SafeAreas() {
                           <span>🛡️ {result.safety_score}/100</span>
                         </div>
                         {result.location.contact && (
-                          <p className="text-[11px] text-amber-400 font-mono">📞 {result.location.contact}</p>
+                          <p className="text-[11px] text-red-400 font-mono">📞 {result.location.contact}</p>
                         )}
                       </div>
                     </Popup>
@@ -343,25 +343,25 @@ export default function SafeAreas() {
               {route?.route_coordinates?.length > 1 && (
                 <Polyline
                   positions={route.route_coordinates}
-                  pathOptions={{ color: '#f59e0b', weight: 4, dashArray: route.provider === 'straight_line' ? '8 6' : null }}
+                  pathOptions={{ color: '#ef4444', weight: 4, dashArray: route.provider === 'straight_line' ? '8 6' : null }}
                 />
               )}
             </MapContainer>
 
             {/* Route info */}
             {route && (
-              <div className="mt-2 p-3 rounded-lg bg-slate-950/90 border border-amber-500/30 text-xs space-y-1.5">
+              <div className="mt-2 p-3 rounded-lg bg-slate-950 border border-red-500/30 text-xs space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-amber-300 font-mono">Route Vector: {route.to_name}</span>
+                  <span className="font-bold text-red-400 font-mono">Route Vector: {route.to_name}</span>
                   <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
                     route.provider === 'osrm'
                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
-                      : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
+                      : 'bg-red-500/10 text-red-400 border-red-500/25'
                   }`}>
                     {route.provider === 'osrm' ? 'Road Network' : 'Estimate Only'}
                   </span>
                 </div>
-                <div className="flex gap-4 font-mono text-slate-300">
+                <div className="flex gap-4 font-mono text-zinc-300">
                   <span>📏 {route.distance_km} km</span>
                   <span>⏱️ ~{route.estimated_minutes} min</span>
                 </div>

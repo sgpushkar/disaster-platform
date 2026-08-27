@@ -24,8 +24,8 @@ const createCustomIcon = (color, emoji = '●') =>
 const userPinIcon = L.divIcon({
   className: '',
   html: `<div style="
-    width:20px;height:20px;background:#f59e0b;border-radius:50%;
-    border:2.5px solid white;box-shadow:0 0 0 5px rgba(245,158,11,0.25),0 3px 10px rgba(0,0,0,0.5);">
+    width:20px;height:20px;background:#ef4444;border-radius:50%;
+    border:2.5px solid white;box-shadow:0 0 0 5px rgba(239,68,68,0.3),0 3px 10px rgba(0,0,0,0.85);">
   </div>`,
   iconSize: [20, 20], iconAnchor: [10, 10],
 })
@@ -99,7 +99,7 @@ export default function MapView() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Emergency GIS</h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/10 text-red-400 border border-red-500/20">
               TACTICAL GRID
             </span>
             {dangerZones.length > 0 && (
@@ -108,12 +108,12 @@ export default function MapView() {
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-zinc-400 mt-1">
             Emergency civil infrastructure, hazard zones, and evacuation routes.
           </p>
         </div>
         <div className="w-full lg:w-72 relative">
-          <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
           <input
             type="text"
             value={searchQuery}
@@ -129,7 +129,7 @@ export default function MapView() {
         <button
           onClick={() => setFilter('all')}
           className={`px-3 py-1.5 rounded-lg font-mono font-medium transition-all flex items-center gap-1.5 shrink-0 ${
-            filter === 'all' ? 'bg-amber-500 text-slate-950 font-bold shadow-sm' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
+            filter === 'all' ? 'bg-red-600 text-white font-bold shadow-sm' : 'bg-slate-900 border border-slate-800 text-zinc-400 hover:text-zinc-200'
           }`}
         >
           <Layers className="h-3.5 w-3.5" />
@@ -142,10 +142,10 @@ export default function MapView() {
               key={key}
               onClick={() => setFilter(key)}
               className={`px-3 py-1.5 rounded-lg font-mono font-medium transition-all flex items-center gap-1.5 shrink-0 ${
-                filter === key ? 'bg-amber-500 text-slate-950 font-bold shadow-sm' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
+                filter === key ? 'bg-red-600 text-white font-bold shadow-sm' : 'bg-slate-900 border border-slate-800 text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <Icon className="h-3.5 w-3.5" style={{ color: filter === key ? '#08090c' : info.color }} />
+              <Icon className="h-3.5 w-3.5" style={{ color: filter === key ? '#ffffff' : info.color }} />
               {info.label} ({counts[key] ?? 0})
             </button>
           )
@@ -153,8 +153,8 @@ export default function MapView() {
       </div>
 
       {error && (
-        <div className="card-panel p-3.5 border-amber-500/30 bg-amber-500/5 flex items-start gap-2 text-xs text-amber-300">
-          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-400" />
+        <div className="card-panel p-3.5 border-red-500/30 bg-red-500/5 flex items-start gap-2 text-xs text-red-300">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-red-400" />
           <span>{error}</span>
         </div>
       )}
@@ -167,8 +167,8 @@ export default function MapView() {
           className="h-[560px] sm:h-[640px] w-full rounded-lg"
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           />
 
           {/* User location */}
@@ -205,7 +205,7 @@ export default function MapView() {
                       </p>
                     )}
                     {loc.contact && (
-                      <a href={`tel:${loc.contact}`} className="text-[11px] text-blue-400">
+                      <a href={`tel:${loc.contact}`} className="text-[11px] text-red-400">
                         📞 {loc.contact}
                       </a>
                     )}
@@ -271,7 +271,7 @@ export default function MapView() {
             </div>
           ))}
           <div className="flex items-center gap-2 text-slate-400 pt-1 border-t border-slate-800/60 mt-1">
-            <span className="h-2.5 w-2.5 rounded-full shrink-0 bg-blue-500" />
+            <span className="h-2.5 w-2.5 rounded-full shrink-0 bg-red-500" />
             Your Location
           </div>
           {dangerZones.length > 0 && (
