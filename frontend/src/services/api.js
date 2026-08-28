@@ -1,7 +1,8 @@
 import axios from 'axios'
 
-// On native Android / standalone APK, use VITE_API_URL if configured, otherwise default to /api for web proxy
-const API_BASE = import.meta.env.VITE_API_URL || '/api'
+// On Vercel / native Android / production, use VITE_API_URL if configured, otherwise default to /api for Vite dev proxy
+const rawApiUrl = import.meta.env.VITE_API_URL
+const API_BASE = rawApiUrl ? rawApiUrl.replace(/\/+$/, '') : '/api'
 
 const api = axios.create({
   baseURL: API_BASE,

@@ -7,6 +7,8 @@
     "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue.bold,cyan.bold\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "node start-backend.js",
     "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview",
     "install:all": "npm install && npm --prefix frontend install",
     "android:build": "npm --prefix frontend run build:android",
     "android:open": "npx --prefix frontend cap open android"

@@ -69,31 +69,46 @@ server {
 
 Then `sudo certbot --nginx -d api.yourdomain.com` for free HTTPS.
 
-### Option B: Render / Railway (simplest for a student project demo)
+### Option B: Render Deployment (Recommended for Backend)
 
+#### Method 1: Using Render Blueprint (Simplest)
 1. Push the repo to GitHub.
-2. Create a new Web Service pointing at `backend/`.
-3. Build command: `pip install -r requirements.txt`
-4. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-5. Add environment variables from `.env.example` in the dashboard.
-6. These platforms give you HTTPS automatically — no Nginx/certbot needed.
+2. In the Render Dashboard, click **New +** -> **Blueprint**.
+3. Connect your repository. Render will automatically read `render.yaml`.
+4. Render deploys the FastAPI backend service (`disaster-intel-api`) and optionally the static frontend.
+5. If using a PostgreSQL database (e.g. Neon, Supabase, Render Postgres), add your `DATABASE_URL` under Environment Variables. Otherwise, it automatically defaults to SQLite.
 
-**Note on SQLite here:** most PaaS free tiers use ephemeral filesystems —
-your SQLite DB can get wiped on redeploy. For anything beyond a demo, attach
-a persistent disk or switch to a managed Postgres addon (one-line
-`DATABASE_URL` change, no code changes needed).
+#### Method 2: Manual Web Service on Render
+1. In the Render Dashboard, click **New +** -> **Web Service**.
+2. Connect your GitHub repository.
+3. Configure the following settings:
+   - **Name:** `disaster-intel-api`
+   - **Language / Runtime:** `Python 3`
+   - **Root Directory:** `backend` (or leave blank; the repo has root fallback support)
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+4. Add Environment Variables:
+   - `PYTHON_VERSION`: `3.11.9`
+   - `SECRET_KEY`: `<random 32-char hex string>`
+   - `OPENWEATHER_API_KEY`: `<your_key>`
+   - `DATABASE_URL`: `<your_postgres_url>` (or leave empty for SQLite)
+   - `FRONTEND_ORIGIN`: `https://your-app.vercel.app,http://localhost:5173`
 
-## 3. Frontend deployment
+## 3. Frontend deployment on Vercel (Recommended)
 
-### Option A: Vercel / Netlify (recommended — zero config for Vite)
-
-1. Push to GitHub, import the repo, set root directory to `frontend/`.
-2. Build command: `npm run build`, output directory: `dist`.
-3. Set an environment variable or edit `vite.config.js`'s proxy target — in
-   production you'll want to point API calls at your deployed backend URL
-   instead of the dev proxy. Simplest fix: replace the `baseURL: '/api'` in
-   `src/services/api.js` with your backend's full URL, e.g.
-   `https://api.yourdomain.com`.
+1. Push your repository to GitHub.
+2. In the [Vercel Dashboard](https://vercel.com/new), click **Import** on your repository.
+3. Configuration:
+   - **Framework Preset:** Vite
+   - **Root Directory:** `./` (or `frontend` — both are pre-configured with `vercel.json` and build scripts)
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist` (or `frontend/dist` if deploying from root)
+4. Add Environment Variable in Vercel:
+   - **Key:** `VITE_API_URL`
+   - **Value:** `https://disaster-intel-api.onrender.com` (your deployed Render API URL, without trailing slash)
+5. Click **Deploy**.
+   - Client-side routing (`/dashboard`, `/alerts`, `/safe-areas`, etc.) will work seamlessly without 404s due to pre-configured `rewrites` in `vercel.json`.
+   - The backend includes dynamic CORS support for all `*.vercel.app` domains.
 
 ### Option B: Same VPS as backend
 

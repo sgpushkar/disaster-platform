@@ -1,4 +1,5 @@
 services:
+  # Backend FastAPI Web Service
   - type: web
     name: disaster-intel-api
     runtime: python
@@ -6,6 +7,8 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
       - key: SECRET_KEY
         generateValue: true
       - key: OPENWEATHER_API_KEY
@@ -16,7 +19,24 @@ services:
         value: "72.8777"
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "60"
+      # Default to local SQLite for instant zero-config startup;
+      # override in Render dashboard with your PostgreSQL/Neon URL if using managed database
       - key: DATABASE_URL
-        value: "SET_THIS_TO_YOUR_NEON_POSTGRES_URL"
+        value: "sqlite:///./database/disaster.db"
       - key: FRONTEND_ORIGIN
-        value: "http://localhost:5173"
+        value: "http://localhost:5173,https://disaster-intel-frontend.onrender.com"
+
+  # Frontend React / Vite Static Site (for Render Blueprint deployment)
+  - type: web
+    name: disaster-intel-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: "https://disaster-intel-api.onrender.com"

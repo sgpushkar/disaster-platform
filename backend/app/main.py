@@ -14,8 +14,11 @@ from app.core.database import Base, engine
 from app.models import models  # noqa: F401 - ensures models are registered before create_all
 from app.routers import auth, weather, predict, dashboard, admin, reports, risk, safety, evacuation, warnings
 
-# Create all tables on startup (SQLite - no separate migration step needed for this project)
-Base.metadata.create_all(bind=engine)
+# Create all tables on startup (SQLite or PostgreSQL)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as exc:
+    print(f"Warning: Could not create tables on initial startup: {exc}")
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
@@ -35,6 +38,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
+    allow_origin_regex=r"https://.*(\.onrender\.com|\.vercel\.app)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
