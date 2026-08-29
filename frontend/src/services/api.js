@@ -1,8 +1,14 @@
 import axios from 'axios'
 
-// On Vercel / native Android / production, use VITE_API_URL if configured, otherwise default to /api for Vite dev proxy
+// On Vercel / native Android / production, default to the live Render backend
+// unless overridden by VITE_API_URL. In local dev, default to /api for Vite proxy.
 const rawApiUrl = import.meta.env.VITE_API_URL
-const API_BASE = rawApiUrl ? rawApiUrl.replace(/\/+$/, '') : '/api'
+const API_BASE = rawApiUrl
+  ? rawApiUrl.replace(/\/+$/, '')
+  : (import.meta.env.PROD
+      ? 'https://disaster-platform-6tom.onrender.com'
+      : '/api')
+
 
 const api = axios.create({
   baseURL: API_BASE,
