@@ -105,7 +105,7 @@ Then `sudo certbot --nginx -d api.yourdomain.com` for free HTTPS.
    - **Output Directory:** `dist` (or `frontend/dist` if deploying from root)
 4. Add Environment Variable in Vercel:
    - **Key:** `VITE_API_URL`
-   - **Value:** `https://disaster-intel-api.onrender.com` (your deployed Render API URL, without trailing slash)
+   - **Value:** `https://disaster-platform-6tom.onrender.com` (your deployed Render API URL, without trailing slash)
 5. Click **Deploy**.
    - Client-side routing (`/dashboard`, `/alerts`, `/safe-areas`, etc.) will work seamlessly without 404s due to pre-configured `rewrites` in `vercel.json`.
    - The backend includes dynamic CORS support for all `*.vercel.app` domains.
