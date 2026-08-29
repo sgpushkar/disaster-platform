@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { Activity, User, Mail, Lock, AlertTriangle, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { API_BASE } from '../services/api.js'
 
 export default function Signup() {
   const [name, setName] = useState('')
@@ -10,6 +11,7 @@ export default function Signup() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingMsg, setLoadingMsg] = useState('Creating account...')
   const { signup } = useAuth()
   const navigate = useNavigate()
 
@@ -21,12 +23,25 @@ export default function Signup() {
       return
     }
     setLoading(true)
+    setLoadingMsg('Creating account...')
+
+    const timer = setTimeout(() => {
+      setLoadingMsg('Waking up cloud server (Render free-tier ~30s)...')
+    }, 3500)
+
     try {
       await signup(name, email, password)
       navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Registration failed. Please try again.')
+      if (err.message === 'Network Error' || err.code === 'ECONNABORTED') {
+        setError(
+          'Network Error: Unable to connect to the backend server. If using Render free-tier, the server may currently be waking up from sleep (~40s). Please wait a moment and try again.'
+        )
+      } else {
+        setError(err.response?.data?.detail || err.message || 'Registration failed. Please try again.')
+      }
     } finally {
+      clearTimeout(timer)
       setLoading(false)
     }
   }
@@ -113,7 +128,7 @@ export default function Signup() {
             disabled={loading}
             className="btn-primary w-full py-2.5 text-xs font-semibold mt-2"
           >
-            {loading ? 'Creating account...' : 'Complete Registration'}
+            {loading ? loadingMsg : 'Complete Registration'}
           </button>
         </form>
 
@@ -122,6 +137,13 @@ export default function Signup() {
           <Link to="/login" className="text-red-400 hover:underline font-medium">
             Sign in to existing account
           </Link>
+        </div>
+
+        <div className="pt-3 border-t border-slate-800/60 flex items-center justify-between text-[10px] text-zinc-500 font-mono">
+          <span>Target Node</span>
+          <span className="text-zinc-400 truncate max-w-[220px]" title={API_BASE}>
+            {API_BASE.replace(/^https?:\/\//, '')}
+          </span>
         </div>
       </motion.div>
     </div>
