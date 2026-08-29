@@ -6,6 +6,7 @@ const API_BASE = rawApiUrl ? rawApiUrl.replace(/\/+$/, '') : '/api'
 
 const api = axios.create({
   baseURL: API_BASE,
+  timeout: 60000, // 60s timeout to allow for Render free-tier cold starts (~30-50s)
 })
 
 api.interceptors.request.use((config) => {
@@ -30,4 +31,15 @@ api.interceptors.response.use(
   }
 )
 
+export async function checkApiHealth() {
+  try {
+    const res = await api.get('/health', { timeout: 15000 })
+    return { ok: true, data: res.data }
+  } catch (err) {
+    return { ok: false, error: err.message }
+  }
+}
+
+export { API_BASE }
 export default api
+
