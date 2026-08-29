@@ -3,12 +3,14 @@ import { motion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { Activity, Mail, Lock, AlertTriangle, ArrowRight, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
+import { API_BASE } from '../services/api.js'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingMsg, setLoadingMsg] = useState('Authenticating...')
   const { login } = useAuth()
   const navigate = useNavigate()
 
@@ -16,12 +18,25 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setLoading(true)
+    setLoadingMsg('Authenticating...')
+
+    const timer = setTimeout(() => {
+      setLoadingMsg('Waking up cloud server (Render free-tier ~30s)...')
+    }, 3500)
+
     try {
       await login(email, password)
       navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.detail || err.message || 'Authentication failed. Check your credentials.')
+      if (err.message === 'Network Error' || err.code === 'ECONNABORTED') {
+        setError(
+          'Network Error: Unable to connect to the backend server. If using Render free-tier, the server may currently be waking up from sleep (~40s). Please wait a moment and try again.'
+        )
+      } else {
+        setError(err.response?.data?.detail || err.message || 'Authentication failed. Check your credentials.')
+      }
     } finally {
+      clearTimeout(timer)
       setLoading(false)
     }
   }
@@ -88,7 +103,7 @@ export default function Login() {
             disabled={loading}
             className="btn-primary w-full py-2.5 text-xs font-semibold mt-2"
           >
-            {loading ? 'Authenticating...' : 'Sign In to Operations'}
+            {loading ? loadingMsg : 'Sign In to Operations'}
           </button>
         </form>
 
@@ -97,6 +112,13 @@ export default function Login() {
           <Link to="/signup" className="text-red-400 hover:underline font-medium">
             Register new account
           </Link>
+        </div>
+
+        <div className="pt-3 border-t border-slate-800/60 flex items-center justify-between text-[10px] text-zinc-500 font-mono">
+          <span>Target Node</span>
+          <span className="text-zinc-400 truncate max-w-[220px]" title={API_BASE}>
+            {API_BASE.replace(/^https?:\/\//, '')}
+          </span>
         </div>
       </motion.div>
     </div>
