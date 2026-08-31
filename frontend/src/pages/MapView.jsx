@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { motion } from 'framer-motion'
 import {
@@ -7,6 +7,17 @@ import {
   Layers, Search, Flame, Shield, Navigation
 } from 'lucide-react'
 import api from '../services/api'
+
+function MapBoundsComponent({ setBounds }) {
+  const map = useMapEvents({
+    moveend: () => setBounds(map.getBounds()),
+    zoomend: () => setBounds(map.getBounds()),
+  })
+  useEffect(() => {
+    setBounds(map.getBounds())
+  }, [map, setBounds])
+  return null
+}
 
 const createCustomIcon = (color, emoji = '●') =>
   L.divIcon({
@@ -56,20 +67,8 @@ export default function MapView() {
   const [error, setError] = useState('')
   const [userLoc, setUserLoc] = useState(null)
 
+  const [mapBounds, setMapBounds] = useState(null)
   const defaultCenter = [19.0760, 72.8777]
-
-  // Helper function to calculate distance using Haversine formula
-  const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
-    const R = 6371 // Radius of the earth in km
-    const dLat = (lat2 - lat1) * (Math.PI / 180)
-    const dLon = (lon2 - lon1) * (Math.PI / 180)
-    const a = 
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
-      Math.sin(dLon / 2) * Math.sin(dLon / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) 
-    return R * c
-  }
 
   useEffect(() => {
     // Load locations
@@ -95,18 +94,15 @@ export default function MapView() {
 
   const mapCenter = userLoc ? [userLoc.lat, userLoc.lon] : defaultCenter
 
-  // Filter to show only locations within 5km of the center
-  const radiusKm = 5
-  
   const filtered = locations
-    .filter((l) => getDistanceFromLatLonInKm(mapCenter[0], mapCenter[1], l.latitude, l.longitude) <= radiusKm)
+    .filter((l) => mapBounds ? mapBounds.contains([l.latitude, l.longitude]) : true)
     .filter((l) => filter === 'all' || l.type === filter)
     .filter((l) => l.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
   const counts = Object.fromEntries(
     ['all', ...Object.keys(typeDetails)].map(k => {
-      const withinRadius = locations.filter(l => getDistanceFromLatLonInKm(mapCenter[0], mapCenter[1], l.latitude, l.longitude) <= radiusKm)
-      return [k, k === 'all' ? withinRadius.length : withinRadius.filter(l => l.type === k).length]
+      const withinBounds = locations.filter(l => mapBounds ? mapBounds.contains([l.latitude, l.longitude]) : true)
+      return [k, k === 'all' ? withinBounds.length : withinBounds.filter(l => l.type === k).length]
     })
   )
 
@@ -184,6 +180,7 @@ export default function MapView() {
           zoom={14}
           className="h-[560px] sm:h-[640px] w-full rounded-lg"
         >
+          <MapBoundsComponent setBounds={setMapBounds} />
           <TileLayer
             attribution='Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
             url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
