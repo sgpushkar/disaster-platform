@@ -6,7 +6,8 @@ import {
   Bell, 
   ShieldCheck,
   Activity,
-  Shield
+  Shield,
+  Download
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -28,7 +29,7 @@ export default function BottomNav() {
     { label: 'Alerts', path: '/alerts', icon: Bell },
     user.role === 'admin'
       ? { label: 'Admin', path: '/admin', icon: ShieldCheck }
-      : { label: 'Risk', path: '/predict', icon: Activity },
+      : { label: 'Get App', path: '/download', icon: Download },
   ]
 
   return (

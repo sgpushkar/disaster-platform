@@ -9,7 +9,8 @@ import {
   ShieldCheck, 
   LogOut, 
   ShieldAlert,
-  Shield
+  Shield,
+  Download
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -84,6 +85,19 @@ export default function Navbar() {
 
         {/* User Info & Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Download APK button */}
+          <Link
+            to="/download"
+            className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+              location.pathname === '/download'
+                ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                : 'bg-slate-900 text-zinc-300 hover:text-white hover:bg-red-600 hover:border-red-600 border-slate-700'
+            }`}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Get App
+          </Link>
+
           <div className="flex flex-col items-end">
             <span className="text-xs font-medium text-zinc-200 truncate max-w-[120px] sm:max-w-none">{user.name}</span>
             <span className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded ${

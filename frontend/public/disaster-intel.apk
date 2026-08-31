@@ -1,0 +1,1 @@
+This is a placeholder for DisasterIntel.apk. Build the real APK using: cd frontend && npm run build:android then build via Android Studio.

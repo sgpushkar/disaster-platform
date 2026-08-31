@@ -12,6 +12,7 @@ import Alerts from './pages/Alerts.jsx'
 import Reports from './pages/Reports.jsx'
 import Admin from './pages/Admin.jsx'
 import SafeAreas from './pages/SafeAreas.jsx'
+import Download from './pages/Download.jsx'
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
           <Route path="/safe-areas" element={<ProtectedRoute><SafeAreas /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
+          <Route path="/download" element={<Download />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>

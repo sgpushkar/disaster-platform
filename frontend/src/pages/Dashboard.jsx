@@ -9,7 +9,7 @@ import {
 import {
   Thermometer, Waves, CloudRain, ShieldAlert, RefreshCw,
   ArrowRight, AlertTriangle, Activity, Wind, Droplets,
-  MapPin, TrendingUp, Bell, Zap, Gauge
+  MapPin, TrendingUp, Bell, Zap, Gauge, Smartphone, Download
 } from 'lucide-react'
 import api from '../services/api'
 import StatCard from '../components/StatCard.jsx'
@@ -471,6 +471,32 @@ export default function Dashboard() {
             <ArrowRight className={`h-4 w-4 ${color} ml-auto opacity-0 group-hover:opacity-100 transition-opacity`} />
           </Link>
         ))}
+      </motion.div>
+
+      {/* ── Android App Download Banner ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#130808] via-[#111114] to-[#0e0e11] border border-red-500/20 p-4 flex flex-col sm:flex-row items-center gap-4"
+      >
+        {/* Glow */}
+        <div className="pointer-events-none absolute -left-10 top-1/2 -translate-y-1/2 h-32 w-32 bg-red-600/10 blur-3xl" />
+        <div className="relative flex items-center gap-3 flex-1 min-w-0">
+          <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 shrink-0">
+            <Smartphone className="h-5 w-5 text-red-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-white">Disaster Intel — Android App</p>
+            <p className="text-[11px] text-zinc-500 truncate">Real-time alerts, GIS map &amp; offline access · APK v1.0.0 · 18.4 MB</p>
+          </div>
+        </div>
+        <Link
+          to="/download"
+          className="relative shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-all active:scale-[0.97] shadow-md shadow-red-600/20"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Download APK
+        </Link>
       </motion.div>
     </div>
   )
