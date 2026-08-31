@@ -58,6 +58,19 @@ export default function MapView() {
 
   const defaultCenter = [19.0760, 72.8777]
 
+  // Helper function to calculate distance using Haversine formula
+  const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371 // Radius of the earth in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180)
+    const dLon = (lon2 - lon1) * (Math.PI / 180)
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) 
+    return R * c
+  }
+
   useEffect(() => {
     // Load locations
     api.get('/map')
@@ -80,17 +93,22 @@ export default function MapView() {
     }
   }, [])
 
+  const mapCenter = userLoc ? [userLoc.lat, userLoc.lon] : defaultCenter
+
+  // Filter to show only locations within 5km of the center
+  const radiusKm = 5
+  
   const filtered = locations
+    .filter((l) => getDistanceFromLatLonInKm(mapCenter[0], mapCenter[1], l.latitude, l.longitude) <= radiusKm)
     .filter((l) => filter === 'all' || l.type === filter)
     .filter((l) => l.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
   const counts = Object.fromEntries(
-    ['all', ...Object.keys(typeDetails)].map(k => [
-      k, k === 'all' ? locations.length : locations.filter(l => l.type === k).length
-    ])
+    ['all', ...Object.keys(typeDetails)].map(k => {
+      const withinRadius = locations.filter(l => getDistanceFromLatLonInKm(mapCenter[0], mapCenter[1], l.latitude, l.longitude) <= radiusKm)
+      return [k, k === 'all' ? withinRadius.length : withinRadius.filter(l => l.type === k).length]
+    })
   )
-
-  const mapCenter = userLoc ? [userLoc.lat, userLoc.lon] : defaultCenter
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -163,7 +181,7 @@ export default function MapView() {
       <div className="card-panel p-2 relative overflow-hidden">
         <MapContainer
           center={mapCenter}
-          zoom={12}
+          zoom={14}
           className="h-[560px] sm:h-[640px] w-full rounded-lg"
         >
           <TileLayer
