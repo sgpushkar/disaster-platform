@@ -29,19 +29,47 @@ const STEPS = [
 export default function DownloadPage() {
   const [downloading, setDownloading] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
+  const [downloadError, setDownloadError] = useState('')
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     setDownloading(true)
-    const link = document.createElement('a')
-    link.href = APK_URL
-    link.download = 'DisasterIntel.apk'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    setTimeout(() => {
+    setDownloadError('')
+
+    try {
+      // HEAD-check the file first to confirm it's a real APK (not a placeholder)
+      const check = await fetch(APK_URL, { method: 'HEAD' }).catch(() => null)
+      const contentType = check?.headers?.get('content-type') || ''
+      const contentLength = parseInt(check?.headers?.get('content-length') || '0', 10)
+
+      const isRealApk =
+        check?.ok &&
+        (contentType.includes('android') ||
+         contentType.includes('octet-stream') ||
+         contentType.includes('zip')) &&
+        contentLength > 10000 // real APK is always > 10KB
+
+      if (!isRealApk) {
+        setDownloadError('APK not yet available. The build is being prepared — check back shortly or build locally.')
+        setDownloading(false)
+        return
+      }
+
+      // Trigger real browser download
+      const a = document.createElement('a')
+      a.href = APK_URL
+      a.download = 'DisasterIntel.apk'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+
+      setTimeout(() => {
+        setDownloading(false)
+        setDownloaded(true)
+      }, 1500)
+    } catch {
+      setDownloadError('Download failed. Please try again.')
       setDownloading(false)
-      setDownloaded(true)
-    }, 1800)
+    }
   }
 
   return (
