@@ -37,6 +37,27 @@ export default function Dashboard() {
   const [dismissedBanner, setDismissedBanner] = useState(false)
   const [location, setLocation] = useState(null)
 
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+  }, [])
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null)
+      }
+    }
+  }
+
   const loadData = useCallback(async (loc = location, isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
     try {
@@ -490,13 +511,23 @@ export default function Dashboard() {
             <p className="text-[11px] text-zinc-500 truncate">Real-time alerts, GIS map &amp; offline access · APK v1.0.0 · 18.4 MB</p>
           </div>
         </div>
-        <Link
-          to="/download"
-          className="relative shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-all active:scale-[0.97] shadow-md shadow-red-600/20"
-        >
-          <Download className="h-3.5 w-3.5" />
-          Download APK
-        </Link>
+        {deferredPrompt ? (
+          <button
+            onClick={handleInstallClick}
+            className="relative shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-all active:scale-[0.97] shadow-md shadow-red-600/20"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Install App
+          </button>
+        ) : (
+          <Link
+            to="/download"
+            className="relative shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-all active:scale-[0.97] shadow-md shadow-red-600/20"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Download APK
+          </Link>
+        )}
       </motion.div>
     </div>
   )
