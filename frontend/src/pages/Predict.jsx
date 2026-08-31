@@ -177,6 +177,35 @@ export default function Predict() {
                   ))}
                 </div>
               )}
+
+              {/* Specific Risks */}
+              {riskResult.specific_risks && Object.keys(riskResult.specific_risks).length > 0 && (
+                <div className="space-y-2.5 pt-4 border-t border-slate-800">
+                  <p className="text-[11px] font-mono uppercase text-zinc-500">Specific Hazard Risks</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {Object.entries(riskResult.specific_risks).map(([hazard, score]) => (
+                      <div key={hazard} className="p-2 rounded border border-slate-800 bg-slate-900/50 flex flex-col gap-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[11px] text-zinc-300 font-medium">{hazard}</span>
+                          <span className={`text-[10px] font-mono font-bold ${
+                            score > 75 ? 'text-red-400' : score > 50 ? 'text-orange-400' : score > 25 ? 'text-yellow-400' : 'text-emerald-400'
+                          }`}>
+                            {score}/100
+                          </span>
+                        </div>
+                        <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ${
+                              score > 75 ? 'bg-red-500' : score > 50 ? 'bg-orange-500' : score > 25 ? 'bg-yellow-500' : 'bg-emerald-500'
+                            }`}
+                            style={{ width: `${Math.min(100, score)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="py-4 text-center">

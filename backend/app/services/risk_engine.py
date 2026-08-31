@@ -193,7 +193,7 @@ def compute_risk_score(
     rainfall_forecast_mm: Optional[float] = None,
     weather: Optional[WeatherData] = None,
     recent_risk_scores: Optional[list[float]] = None,
-) -> tuple[float, str, str, float, list[dict], str]:
+) -> tuple[float, str, str, float, list[dict], str, dict]:
     """
     Computes the multi-factor flood risk score.
 
@@ -204,6 +204,7 @@ def compute_risk_score(
         confidence        float 0-100 (based on signal availability)
         contributing_factors  list[dict] for explainability
         recommendation    str plain-language advice
+        specific_risks    dict specific disaster risks
     """
     base_weights = settings.risk_weights.copy()
     components: dict[str, float] = {}
@@ -236,7 +237,7 @@ def compute_risk_score(
 
     # --- No signals at all ---
     if not components:
-        return 0.0, "Low", "UNKNOWN", 0.0, [], "Insufficient data to assess risk."
+        return 0.0, "Low", "UNKNOWN", 0.0, [], "Insufficient data to assess risk.", {}
 
     # --- Normalize weights to sum to 1.0 ---
     total_weight = sum(weights.values())
@@ -257,5 +258,19 @@ def compute_risk_score(
     # --- Explainability ---
     factors = _build_explanation(components, total_weight, weights)
     recommendation = _recommendation(risk_level, risk_trend)
+    
+    # --- Specific Risks ---
+    # Heuristics based on components
+    weather_s = components.get("weather", 0.0)
+    rain_s = components.get("rainfall_forecast", 0.0)
+    
+    specific_risks = {
+        "Floods": risk_score,
+        "Landslides": round((rain_s * 0.7) + (risk_score * 0.3), 2),
+        "Cyclones": round((weather_s * 0.8) + (rain_s * 0.2), 2),
+        "Intense Rainfall": round(rain_s, 2),
+        "Earthquake": round(min(15.0 + (confidence * 0.05), 100.0), 2), # Unrelated to weather, keeping it low/baseline
+        "Wildfire": round(max(0.0, 100.0 - weather_s - rain_s) * 0.6, 2) # Dry weather increases wildfire risk
+    }
 
-    return risk_score, risk_level, risk_trend, confidence, factors, recommendation
+    return risk_score, risk_level, risk_trend, confidence, factors, recommendation, specific_risks

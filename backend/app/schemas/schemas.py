@@ -120,6 +120,7 @@ class RiskCurrentOut(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     contributing_factors: List[Dict[str, Any]] = []
+    specific_risks: Dict[str, float] = {}
     recommendation: str = ""
     warning_generated: bool = False
     snapshot_id: Optional[int] = None

@@ -84,7 +84,7 @@ def get_current_risk(
         rainfall_forecast_mm = weather.rainfall
 
     # 4. Compute risk
-    score, level, trend, confidence, factors, recommendation = compute_risk_score(
+    score, level, trend, confidence, factors, recommendation, specific_risks = compute_risk_score(
         rainfall_forecast_mm=rainfall_forecast_mm,
         weather=weather,
         recent_risk_scores=recent_scores if len(recent_scores) >= 2 else None,
@@ -129,6 +129,7 @@ def get_current_risk(
         latitude=lat or (weather.latitude if weather else None),
         longitude=lon or (weather.longitude if weather else None),
         contributing_factors=factors,
+        specific_risks=specific_risks,
         recommendation=recommendation,
         warning_generated=warning["warning_issued"],
         snapshot_id=snapshot.id,
