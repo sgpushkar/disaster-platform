@@ -156,7 +156,7 @@ export default function Signup() {
                 value={name}
                 onChange={(e) => { setName(e.target.value); formRef.current.name = e.target.value }}
                 className="input-control pl-9 text-xs"
-                placeholder="Pushkar Mhatre"
+                placeholder="Operator Name"
               />
             </div>
           </div>
@@ -172,7 +172,7 @@ export default function Signup() {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); formRef.current.email = e.target.value }}
                 className="input-control pl-9 text-xs"
-                placeholder="pushkar@example.com"
+                placeholder="operator@disaster-intel.gov"
               />
             </div>
           </div>

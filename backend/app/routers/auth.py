@@ -21,13 +21,21 @@ def signup(payload: UserSignup, db: Session = Depends(get_db)):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    # First registered user becomes admin automatically, everyone after is a normal user
-    is_first_user = db.query(User).count() == 0
+    # First registered user becomes admin automatically, as well as designated admins (Srushti, Dhruvika)
+    name_clean = (payload.name or "").lower().strip()
+    email_clean = (payload.email or "").lower().strip()
+    is_admin = (
+        db.query(User).count() == 0
+        or "srushti" in name_clean
+        or "srushti" in email_clean
+        or "dhruvika" in name_clean
+        or "dhruvika" in email_clean
+    )
     user = User(
         name=payload.name,
         email=payload.email,
         password=hash_password(payload.password),
-        role=RoleEnum.admin if is_first_user else RoleEnum.user,
+        role=RoleEnum.admin if is_admin else RoleEnum.user,
     )
     db.add(user)
     db.commit()

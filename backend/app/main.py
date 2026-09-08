@@ -59,6 +59,51 @@ app.include_router(evacuation.router)
 app.include_router(warnings.router)
 
 
+@app.on_event("startup")
+def seed_admin_users():
+    from app.core.database import SessionLocal
+    from app.models.models import User, RoleEnum
+    from app.core.security import hash_password
+
+    db = SessionLocal()
+    try:
+        # Promote any existing user with srushti or dhruvika in name or email
+        for user in db.query(User).all():
+            nl = (user.name or "").lower()
+            el = (user.email or "").lower()
+            if "srushti" in nl or "srushti" in el or "dhruvika" in nl or "dhruvika" in el:
+                user.role = RoleEnum.admin
+
+        # Ensure Srushti admin exists
+        srushti = db.query(User).filter(User.email == "srushti@disaster-intel.gov").first()
+        if not srushti:
+            srushti = User(
+                name="Srushti",
+                email="srushti@disaster-intel.gov",
+                password=hash_password("password123"),
+                role=RoleEnum.admin,
+            )
+            db.add(srushti)
+
+        # Ensure Dhruvika admin exists
+        dhruvika = db.query(User).filter(User.email == "dhruvika@disaster-intel.gov").first()
+        if not dhruvika:
+            dhruvika = User(
+                name="Dhruvika",
+                email="dhruvika@disaster-intel.gov",
+                password=hash_password("password123"),
+                role=RoleEnum.admin,
+            )
+            db.add(dhruvika)
+
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Warning during admin user seeding: {e}")
+    finally:
+        db.close()
+
+
 @app.get("/")
 def root():
     return {

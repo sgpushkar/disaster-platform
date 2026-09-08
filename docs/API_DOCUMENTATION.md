@@ -17,7 +17,7 @@ Create an account. First user ever created becomes `admin`.
 
 **Body**
 ```json
-{ "name": "Pushkar Mhatre", "email": "you@example.com", "password": "min8chars" }
+{ "name": "Operator Name", "email": "operator@disaster-intel.gov", "password": "min8chars" }
 ```
 **Response `201`**
 ```json
