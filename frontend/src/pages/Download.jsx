@@ -82,7 +82,15 @@ export default function DownloadPage() {
           <div className="absolute top-32 -right-20 h-64 w-64 rounded-full bg-orange-600/6 blur-[100px]" />
         </div>
 
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 pt-12 pb-12 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mx-auto mb-5 h-24 w-24 rounded-3xl bg-black/70 border border-slate-800 p-2 flex items-center justify-center shadow-2xl shadow-red-500/10"
+          >
+            <img src="/logo.png" alt="Disaster Intel" className="h-full w-full object-contain" />
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -162,8 +170,8 @@ export default function DownloadPage() {
                   <div className="flex-1 p-3 space-y-2">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-1.5">
-                        <div className="h-5 w-5 rounded bg-red-600/80 flex items-center justify-center">
-                          <ShieldCheck className="h-3 w-3 text-white" />
+                        <div className="h-5 w-5 rounded bg-black/60 border border-slate-800 flex items-center justify-center overflow-hidden">
+                          <img src="/logo.png" alt="Disaster Intel" className="h-full w-full object-contain" />
                         </div>
                         <span className="text-[9px] font-bold text-white font-mono">DISASTER INTEL</span>
                       </div>

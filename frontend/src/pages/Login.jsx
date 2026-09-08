@@ -138,9 +138,9 @@ export default function Login() {
         className="w-full max-w-md card-panel p-6 sm:p-8 space-y-6"
       >
         {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="mx-auto h-12 w-12 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-500 shadow-sm">
-            <Activity className="h-6 w-6" />
+        <div className="text-center space-y-3">
+          <div className="mx-auto h-20 w-20 rounded-2xl bg-black/60 border border-slate-800 p-2 flex items-center justify-center shadow-xl shadow-red-500/5">
+            <img src="/logo.png" alt="Disaster Intel" className="h-full w-full object-contain" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-white">Disaster Intelligence Portal</h1>

@@ -36,8 +36,8 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
         {/* Brand */}
         <Link to="/dashboard" className="flex items-center gap-2.5 group">
-          <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-500 group-hover:bg-red-600 group-hover:text-white transition-all shadow-sm">
-            <ShieldAlert className="h-4 w-4 sm:h-5 sm:w-5" />
+          <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg bg-black/60 border border-slate-800 p-0.5 flex items-center justify-center overflow-hidden shadow-sm group-hover:border-red-500/50 transition-all">
+            <img src="/logo.png" alt="Disaster Intel" className="h-full w-full object-contain rounded-md" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
