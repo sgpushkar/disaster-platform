@@ -91,6 +91,28 @@ class CombinedRiskOut(BaseModel):
     breakdown: dict
 
 
+class DisasterAttributePredictRequest(BaseModel):
+    rainfall_24h_mm: Optional[float] = Field(None, description="24h precipitation in mm")
+    rainfall_72h_mm: Optional[float] = Field(None, description="72h cumulative precipitation in mm")
+    humidity_pct: Optional[float] = Field(None, ge=0.0, le=100.0, description="Relative humidity percentage")
+    temperature_c: Optional[float] = Field(None, description="Temperature in Celsius")
+    wind_speed_ms: Optional[float] = Field(None, ge=0.0, description="Wind speed in m/s")
+    pressure_hpa: Optional[float] = Field(None, description="Barometric pressure in hPa")
+    soil_moisture_pct: Optional[float] = Field(None, ge=0.0, le=100.0, description="Soil moisture index percentage")
+    river_water_level_m: Optional[float] = Field(None, ge=0.0, description="River water level in meters")
+    drainage_capacity_index: Optional[float] = Field(0.5, ge=0.0, le=1.0, description="Drainage capacity score 0.0-1.0")
+    use_latest_weather: bool = True
+
+
+class DisasterAttributePredictOut(BaseModel):
+    risk_score: float
+    risk_level: str
+    flood_probability: float
+    flood_predicted: bool
+    contributing_factors: Dict[str, float]
+    input_attributes: Dict[str, float]
+
+
 # ---------- Risk Snapshot ----------
 class RiskSnapshotOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)

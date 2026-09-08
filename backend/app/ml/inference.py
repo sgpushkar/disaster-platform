@@ -163,3 +163,85 @@ def predict_rainfall(recent_rainfall_mm: list[float]) -> tuple[float, list[float
     tomorrow = predictions[0]
     next_3_days = predictions[1:]
     return tomorrow, next_3_days
+
+
+@lru_cache(maxsize=1)
+def _load_disaster_risk_model():
+    path = _find_model_file("disaster_risk_model.joblib")
+    if not path:
+        raise ModelNotTrainedError(
+            "Disaster attribute risk model not trained. Run `python ml/train_disaster_risk_model.py`."
+        )
+    return joblib.load(path)
+
+
+def predict_disaster_risk_from_attributes(attrs: dict) -> dict:
+    """
+    Evaluates historical disaster attribute model on meteorological & hydrological inputs.
+    """
+    model_bundle = _load_disaster_risk_model()
+    scaler = model_bundle["scaler"]
+    base_features = model_bundle["base_features"]
+    feature_names = model_bundle.get("feature_names", [])
+    level_clf = model_bundle["level_classifier"]
+    flood_clf = model_bundle["flood_classifier"]
+    regressor = model_bundle["regressor"]
+    importances = model_bundle.get("feature_importances", {})
+
+    defaults = {
+        "rainfall_24h_mm": 0.0,
+        "rainfall_72h_mm": 0.0,
+        "humidity_pct": 60.0,
+        "temperature_c": 28.0,
+        "wind_speed_ms": 3.0,
+        "pressure_hpa": 1012.0,
+        "soil_moisture_pct": 40.0,
+        "river_water_level_m": 2.0,
+        "drainage_capacity_index": 0.5,
+    }
+
+    clean_inputs = {}
+    for k in base_features:
+        val = attrs.get(k)
+        clean_inputs[k] = float(val) if val is not None else defaults[k]
+
+    if clean_inputs["rainfall_72h_mm"] < clean_inputs["rainfall_24h_mm"]:
+        clean_inputs["rainfall_72h_mm"] = clean_inputs["rainfall_24h_mm"]
+
+    p_drop = max(0.0, 1013.25 - clean_inputs["pressure_hpa"])
+    drainage = max(clean_inputs["drainage_capacity_index"], 0.1)
+    rain_drainage = clean_inputs["rainfall_72h_mm"] / drainage
+    sat_idx = (clean_inputs["soil_moisture_pct"] / 100.0) * (clean_inputs["river_water_level_m"] / 10.0)
+
+    full_features = [
+        clean_inputs["rainfall_24h_mm"],
+        clean_inputs["rainfall_72h_mm"],
+        clean_inputs["humidity_pct"],
+        clean_inputs["temperature_c"],
+        clean_inputs["wind_speed_ms"],
+        clean_inputs["pressure_hpa"],
+        clean_inputs["soil_moisture_pct"],
+        clean_inputs["river_water_level_m"],
+        clean_inputs["drainage_capacity_index"],
+        p_drop,
+        rain_drainage,
+        sat_idx,
+    ]
+
+    import pandas as pd
+    feat_df = pd.DataFrame([full_features], columns=feature_names)
+    x_scaled = scaler.transform(feat_df)
+
+    risk_score = float(np.clip(regressor.predict(x_scaled)[0], 0.0, 100.0))
+    risk_level = str(level_clf.predict(x_scaled)[0])
+    flood_prob = float(flood_clf.predict_proba(x_scaled)[0][1])
+    flood_pred = bool(flood_prob >= 0.5)
+
+    return {
+        "risk_score": round(risk_score, 1),
+        "risk_level": risk_level,
+        "flood_probability": round(flood_prob * 100, 2),
+        "flood_predicted": flood_pred,
+        "contributing_factors": importances,
+        "input_attributes": clean_inputs,
+    }

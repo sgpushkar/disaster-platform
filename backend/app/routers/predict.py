@@ -14,8 +14,12 @@ from app.models.models import FloodImage, Prediction, WeatherData
 from app.schemas.schemas import (
     FloodImageOut, RainfallPredictRequest, RainfallPredictOut,
     CombinedRiskRequest, CombinedRiskOut,
+    DisasterAttributePredictRequest, DisasterAttributePredictOut,
 )
-from app.ml.inference import predict_flood_image, predict_rainfall, ModelNotTrainedError
+from app.ml.inference import (
+    predict_flood_image, predict_rainfall,
+    predict_disaster_risk_from_attributes, ModelNotTrainedError,
+)
 from app.services.risk_engine import compute_risk_score
 
 router = APIRouter(tags=["predictions"])
@@ -114,3 +118,57 @@ def predict_combined_risk(
     db.commit()
 
     return CombinedRiskOut(risk_score=score, risk_level=level, breakdown=breakdown)
+
+
+@router.post("/predict/disaster-risk", response_model=DisasterAttributePredictOut)
+def predict_disaster_attribute_risk(
+    payload: DisasterAttributePredictRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Predicts flood & disaster risk from historical environmental & meteorological attributes.
+    Optionally auto-populates live weather parameters from the database.
+    """
+    attrs = {
+        "rainfall_24h_mm": payload.rainfall_24h_mm,
+        "rainfall_72h_mm": payload.rainfall_72h_mm,
+        "humidity_pct": payload.humidity_pct,
+        "temperature_c": payload.temperature_c,
+        "wind_speed_ms": payload.wind_speed_ms,
+        "pressure_hpa": payload.pressure_hpa,
+        "soil_moisture_pct": payload.soil_moisture_pct,
+        "river_water_level_m": payload.river_water_level_m,
+        "drainage_capacity_index": payload.drainage_capacity_index,
+    }
+
+    if payload.use_latest_weather:
+        latest = db.query(WeatherData).order_by(WeatherData.timestamp.desc()).first()
+        if latest:
+            if attrs["temperature_c"] is None:
+                attrs["temperature_c"] = latest.temperature
+            if attrs["humidity_pct"] is None:
+                attrs["humidity_pct"] = latest.humidity
+            if attrs["wind_speed_ms"] is None:
+                attrs["wind_speed_ms"] = latest.wind_speed
+            if attrs["pressure_hpa"] is None:
+                attrs["pressure_hpa"] = latest.pressure
+            if attrs["rainfall_24h_mm"] is None:
+                attrs["rainfall_24h_mm"] = latest.rainfall
+
+    try:
+        result = predict_disaster_risk_from_attributes(attrs)
+    except ModelNotTrainedError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    db.add(Prediction(
+        user_id=current_user.id,
+        prediction_type="disaster_attribute_risk",
+        confidence=result["flood_probability"],
+        risk_level=result["risk_level"],
+        risk_score=result["risk_score"],
+        details_json=json.dumps(result),
+    ))
+    db.commit()
+
+    return DisasterAttributePredictOut(**result)
