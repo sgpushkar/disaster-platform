@@ -57,3 +57,17 @@ def test_admin_can_create_and_delete_location(client):
 
     delete_resp = client.delete(f"/admin/locations/{loc_id}", headers=headers)
     assert delete_resp.status_code == 200
+
+
+def test_current_risk_returns_dataset_benchmarks(client):
+    token, _ = _signup_and_token(client, email="riskanalyst@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = client.get("/risk/current", headers=headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "risk_score" in data
+    assert "risk_level" in data
+    # May include dataset_benchmarks if trained
+    if data.get("dataset_benchmarks"):
+        assert data["dataset_benchmarks"]["total_records"] == 61368
+

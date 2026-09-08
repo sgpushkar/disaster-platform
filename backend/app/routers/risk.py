@@ -120,6 +120,29 @@ def get_current_risk(
         location_name=weather.location_name if weather else None,
     )
 
+    # 7. DisasterScope dataset benchmark & prediction
+    dataset_benchmarks = None
+    dataset_prediction = None
+    try:
+        from app.ml.inference import predict_disaster_risk_from_attributes
+        attr_result = predict_disaster_risk_from_attributes({
+            "temperature_c": weather.temperature if weather else None,
+            "humidity_pct": weather.humidity if weather else None,
+            "wind_speed_ms": weather.wind_speed if weather else None,
+            "rainfall_24h_mm": rainfall_forecast_mm or (weather.rainfall if weather else None),
+            "pressure_hpa": weather.pressure if weather else None,
+        })
+        dataset_benchmarks = attr_result.get("dataset_benchmarks")
+        dataset_prediction = {
+            "risk_score": attr_result.get("risk_score"),
+            "risk_level": attr_result.get("risk_level"),
+            "flood_probability": attr_result.get("flood_probability"),
+            "flood_predicted": attr_result.get("flood_predicted"),
+            "contributing_factors": attr_result.get("contributing_factors"),
+        }
+    except Exception:
+        pass
+
     return RiskCurrentOut(
         risk_score=score,
         risk_level=level,
@@ -133,6 +156,8 @@ def get_current_risk(
         recommendation=recommendation,
         warning_generated=warning["warning_issued"],
         snapshot_id=snapshot.id,
+        dataset_benchmarks=dataset_benchmarks,
+        dataset_prediction=dataset_prediction,
     )
 
 

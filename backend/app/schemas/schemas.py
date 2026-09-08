@@ -92,6 +92,21 @@ class CombinedRiskOut(BaseModel):
 
 
 class DisasterAttributePredictRequest(BaseModel):
+    # DisasterScope dataset attributes
+    temperature: Optional[float] = Field(None, description="Ambient temperature (°C)")
+    humidity: Optional[float] = Field(None, ge=0.0, le=100.0, description="Relative humidity (%)")
+    wind_speed: Optional[float] = Field(None, ge=0.0, description="Wind speed (km/h)")
+    air_quality_index: Optional[float] = Field(None, ge=0.0, description="Air quality index (AQI 0-500)")
+    water_level: Optional[float] = Field(None, ge=0.0, description="Water depth / inundation (m)")
+    building_damage_level: Optional[str] = Field("Undamaged", description="Undamaged | Minor | Moderate | Severe | Destroyed")
+    road_condition: Optional[str] = Field("Intact", description="Intact | Obstructed | Damaged | Blocked")
+    infrastructure_status: Optional[str] = Field("Intact", description="Intact | Damaged | Severely Damaged")
+    vegetation_cover: Optional[float] = Field(None, ge=0.0, le=100.0, description="Vegetation cover (%)")
+    people_detected: Optional[int] = Field(0, ge=0, description="Count of people detected")
+    heat_signatures: Optional[int] = Field(0, ge=0, description="Count of heat signatures")
+    hazardous_material_detected: Optional[int] = Field(0, ge=0, le=1, description="Hazardous material detected (0 or 1)")
+
+    # Meteorological / Hydrological fields & backward compatibility
     rainfall_24h_mm: Optional[float] = Field(None, description="24h precipitation in mm")
     rainfall_72h_mm: Optional[float] = Field(None, description="72h cumulative precipitation in mm")
     humidity_pct: Optional[float] = Field(None, ge=0.0, le=100.0, description="Relative humidity percentage")
@@ -101,6 +116,8 @@ class DisasterAttributePredictRequest(BaseModel):
     soil_moisture_pct: Optional[float] = Field(None, ge=0.0, le=100.0, description="Soil moisture index percentage")
     river_water_level_m: Optional[float] = Field(None, ge=0.0, description="River water level in meters")
     drainage_capacity_index: Optional[float] = Field(0.5, ge=0.0, le=1.0, description="Drainage capacity score 0.0-1.0")
+    latitude: Optional[float] = Field(None, description="Current latitude")
+    longitude: Optional[float] = Field(None, description="Current longitude")
     use_latest_weather: bool = True
 
 
@@ -109,39 +126,28 @@ class DisasterAttributePredictOut(BaseModel):
     risk_level: str
     flood_probability: float
     flood_predicted: bool
-    contributing_factors: Dict[str, float]
-    input_attributes: Dict[str, float]
+    disaster_severity_level: Optional[str] = "Low"
+    affected_area_type: Optional[str] = "Unblocked"
+    immediate_action_required: Optional[str] = "No"
+    immediate_action_probability: Optional[float] = 0.0
+    survivor_presence_likelihood: Optional[str] = "Low"
+    survivor_probability: Optional[float] = 0.0
+    urgency_score: Optional[float] = None
+    recommendations: Optional[List[str]] = []
+    contributing_factors: Dict[str, float] = {}
+    input_attributes: Dict[str, Any] = {}
+    input_telemetry: Optional[Dict[str, Any]] = None
+    dataset_benchmarks: Optional[Dict[str, Any]] = None
 
 
-class DisasterScopePredictRequest(BaseModel):
-    temperature: Optional[float] = Field(25.0, description="Ambient temperature (°C)")
-    humidity: Optional[float] = Field(60.0, ge=0.0, le=100.0, description="Relative humidity (%)")
-    wind_speed: Optional[float] = Field(10.0, ge=0.0, description="Wind speed (km/h)")
-    air_quality_index: Optional[float] = Field(120.0, ge=0.0, description="AQI (0-500)")
-    water_level: Optional[float] = Field(0.5, ge=0.0, description="Flood water depth (m)")
-    vegetation_cover: Optional[float] = Field(50.0, ge=0.0, le=100.0, description="Vegetation cover (%)")
-    people_detected: Optional[int] = Field(0, ge=0, description="Count of people detected by drone")
-    heat_signatures: Optional[int] = Field(0, ge=0, description="Count of infrared heat signatures")
-    hazardous_material_detected: Optional[int] = Field(0, ge=0, le=1, description="Hazardous material detected (0 or 1)")
-    building_damage_level: Optional[str] = Field("Undamaged", description="Undamaged | Minor | Moderate | Severe | Destroyed")
-    road_condition: Optional[str] = Field("Intact", description="Intact | Obstructed | Damaged | Blocked")
-    infrastructure_status: Optional[str] = Field("Intact", description="Intact | Damaged | Severely Damaged")
-    use_latest_weather: bool = False
+class DisasterScopePredictRequest(DisasterAttributePredictRequest):
+    pass
 
 
-class DisasterScopePredictOut(BaseModel):
-    disaster_severity_level: str  # Low | Medium | High
-    severity_probabilities: Dict[str, float]
-    affected_area_type: str  # Unblocked | Flooded | Fire-Damaged | Collapsed Structure
-    area_type_probabilities: Dict[str, float]
-    immediate_action_required: str  # Yes | No
-    immediate_action_probability: float
-    survivor_presence_likelihood: str  # Low | High
-    survivor_probability: float
-    urgency_score: float  # Composite 0-100 reconnaissance priority score
-    recommendations: List[str]
-    input_telemetry: Dict[str, Any]
-    feature_importances: Dict[str, float]
+class DisasterScopePredictOut(DisasterAttributePredictOut):
+    severity_probabilities: Optional[Dict[str, float]] = None
+    area_type_probabilities: Optional[Dict[str, float]] = None
+    feature_importances: Optional[Dict[str, float]] = None
 
 
 # ---------- Risk Snapshot ----------
@@ -177,6 +183,8 @@ class RiskCurrentOut(BaseModel):
     recommendation: str = ""
     warning_generated: bool = False
     snapshot_id: Optional[int] = None
+    dataset_benchmarks: Optional[Dict[str, Any]] = None
+    dataset_prediction: Optional[Dict[str, Any]] = None
 
 
 class RiskTrendOut(BaseModel):

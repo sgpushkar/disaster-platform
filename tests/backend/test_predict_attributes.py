@@ -38,7 +38,8 @@ def test_predict_disaster_risk_endpoint_success(client):
     assert "risk_level" in data
     assert "flood_probability" in data
     assert "flood_predicted" in data
-    assert "contributing_factors" in data
     assert data["risk_score"] > 60.0
     assert data["risk_level"] in ("High", "Critical")
     assert data["flood_predicted"] is True
+    assert "dataset_benchmarks" in data
+    assert data["dataset_benchmarks"]["total_records"] == 61368

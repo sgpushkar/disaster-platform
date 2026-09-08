@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Activity, CloudRain, Upload, Image, AlertTriangle, CheckCircle,
   ShieldAlert, ChevronDown, ChevronUp, Loader2, Camera, BarChart3, Info,
-  Crosshair, Radio, Users, Flame, Zap, Shield, Sparkles,
+  Sliders, Shield, Sparkles, Database, RefreshCw, Thermometer, Droplets,
+  Wind, Gauge, Compass, MapPin, AlertOctagon,
 } from 'lucide-react'
 import api from '../services/api'
 import RiskGauge from '../components/RiskGauge.jsx'
@@ -49,16 +50,119 @@ export default function Predict() {
   const [rainfallLoading, setRainfallLoading] = useState(false)
 
   const [riskResult, setRiskResult] = useState(null)
+  const [currentWeather, setCurrentWeather] = useState(null)
+  const [datasetComparison, setDatasetComparison] = useState(null)
   const [riskLoading, setRiskLoading] = useState(false)
   const [riskError, setRiskError] = useState('')
 
+  // Site & Environmental attribute controls (collapsible inside primary assessment)
+  const [showAttributeControls, setShowAttributeControls] = useState(false)
+  const [attrInputs, setAttrInputs] = useState({
+    temperature: 28.0,
+    humidity: 75.0,
+    wind_speed: 18.0,
+    air_quality_index: 165.0,
+    water_level: 1.5,
+    vegetation_cover: 45.0,
+    people_detected: 2,
+    heat_signatures: 2,
+    hazardous_material_detected: 0,
+    building_damage_level: 'Moderate',
+    road_condition: 'Obstructed',
+    infrastructure_status: 'Damaged',
+  })
+
   const fileRef = useRef()
 
-  // Auto-fetch current risk on load (no image required)
+  const submitCombinedRisk = async () => {
+    setRiskLoading(true)
+    setRiskError('')
+    try {
+      const loc = localStorage.getItem('disaster_intel_location')
+      const params = loc ? (() => { try { const p = JSON.parse(loc); return { lat: p.lat, lon: p.lon } } catch (_) { return {} } })() : {}
+
+      const [riskRes, weatherRes, attrRes] = await Promise.all([
+        api.get('/risk/current', { params }),
+        api.get('/weather', { params }).catch(() => null),
+        api.post('/predict/disaster-risk', {
+          use_latest_weather: true,
+          latitude: params.lat,
+          longitude: params.lon,
+        }).catch(() => null),
+      ])
+
+      setRiskResult(riskRes.data)
+      if (weatherRes?.data) {
+        setCurrentWeather(weatherRes.data)
+        // Sync defaults with weather telemetry
+        setAttrInputs(prev => ({
+          ...prev,
+          temperature: weatherRes.data.temperature != null ? weatherRes.data.temperature : prev.temperature,
+          humidity: weatherRes.data.humidity != null ? weatherRes.data.humidity : prev.humidity,
+          wind_speed: weatherRes.data.wind_speed != null ? Math.round(weatherRes.data.wind_speed * 3.6) : prev.wind_speed,
+        }))
+      }
+      if (attrRes?.data) {
+        setDatasetComparison(attrRes.data)
+      } else if (riskRes.data?.dataset_benchmarks) {
+        setDatasetComparison({
+          ...riskRes.data.dataset_prediction,
+          dataset_benchmarks: riskRes.data.dataset_benchmarks,
+        })
+      }
+    } catch (err) {
+      setRiskError(err.response?.data?.detail || 'Risk computation failed.')
+    } finally {
+      setRiskLoading(false)
+    }
+  }
+
+  const submitCustomAttributeRisk = async () => {
+    setRiskLoading(true)
+    setRiskError('')
+    try {
+      const payload = {
+        temperature: parseFloat(attrInputs.temperature) || 0,
+        humidity: parseFloat(attrInputs.humidity) || 0,
+        wind_speed: parseFloat(attrInputs.wind_speed) || 0,
+        air_quality_index: parseFloat(attrInputs.air_quality_index) || 0,
+        water_level: parseFloat(attrInputs.water_level) || 0,
+        vegetation_cover: parseFloat(attrInputs.vegetation_cover) || 0,
+        people_detected: parseInt(attrInputs.people_detected) || 0,
+        heat_signatures: parseInt(attrInputs.heat_signatures) || 0,
+        hazardous_material_detected: parseInt(attrInputs.hazardous_material_detected) || 0,
+        building_damage_level: attrInputs.building_damage_level,
+        road_condition: attrInputs.road_condition,
+        infrastructure_status: attrInputs.infrastructure_status,
+        use_latest_weather: false,
+      }
+
+      const { data } = await api.post('/predict/disaster-risk', payload)
+      setDatasetComparison(data)
+      setRiskResult(prev => ({
+        ...prev,
+        risk_score: data.risk_score,
+        risk_level: data.risk_level,
+        recommendation: data.recommendations?.[0] || prev?.recommendation,
+        contributing_factors: Object.entries(data.contributing_factors || {}).slice(0, 5).map(([k, v]) => ({
+          key: k,
+          label: k.replace(/_/g, ' ').toUpperCase(),
+          score: Math.round(v),
+          weight_pct: Math.round(v),
+          description: `DisasterScope model feature weight: ${v}%`,
+        })),
+        dataset_benchmarks: data.dataset_benchmarks,
+      }))
+    } catch (err) {
+      setRiskError(err.response?.data?.detail || 'Prediction from custom attributes failed.')
+    } finally {
+      setRiskLoading(false)
+    }
+  }
+
+  // Fetch current live attributes and predict risk on initial load
   useEffect(() => {
-    const loc = localStorage.getItem('disaster_intel_location')
-    const params = loc ? (() => { try { const p = JSON.parse(loc); return { lat: p.lat, lon: p.lon } } catch (_) { return {} } })() : {}
-    api.get('/risk/current', { params }).then(r => setRiskResult(r.data)).catch(() => {})
+    submitCombinedRisk()
   }, [])
 
   const handleImageChange = (e) => {
@@ -99,105 +203,6 @@ export default function Predict() {
     }
   }
 
-  const submitCombinedRisk = async () => {
-    setRiskLoading(true)
-    setRiskError('')
-    try {
-      const loc = localStorage.getItem('disaster_intel_location')
-      const params = loc ? (() => { try { const p = JSON.parse(loc); return { lat: p.lat, lon: p.lon } } catch (_) { return {} } })() : {}
-      const { data } = await api.get('/risk/current', { params })
-      setRiskResult(data)
-    } catch (err) {
-      setRiskError(err.response?.data?.detail || 'Risk computation failed.')
-    } finally {
-      setRiskLoading(false)
-    }
-  }
-
-  // DisasterScope Recon State (Kaggle Dataset: 61,368 Records)
-  const [scopeInputs, setScopeInputs] = useState({
-    temperature: 28.0,
-    humidity: 75.0,
-    wind_speed: 18.0,
-    air_quality_index: 165.0,
-    water_level: 1.5,
-    vegetation_cover: 45.0,
-    people_detected: 2,
-    heat_signatures: 2,
-    hazardous_material_detected: 0,
-    building_damage_level: 'Moderate',
-    road_condition: 'Obstructed',
-    infrastructure_status: 'Damaged',
-  })
-  const [scopeResult, setScopeResult] = useState(null)
-  const [scopeLoading, setScopeLoading] = useState(false)
-  const [scopeError, setScopeError] = useState('')
-
-  const scopePresets = [
-    {
-      name: '🌊 Flood Surge',
-      data: {
-        temperature: 26.5, humidity: 90.0, wind_speed: 22.0, air_quality_index: 90.0,
-        water_level: 3.5, vegetation_cover: 25.0, people_detected: 4, heat_signatures: 1,
-        hazardous_material_detected: 0, building_damage_level: 'Moderate',
-        road_condition: 'Blocked', infrastructure_status: 'Damaged',
-      }
-    },
-    {
-      name: '🔥 Wildfire Incursion',
-      data: {
-        temperature: 39.0, humidity: 20.0, wind_speed: 38.0, air_quality_index: 410.0,
-        water_level: 0.1, vegetation_cover: 10.0, people_detected: 1, heat_signatures: 5,
-        hazardous_material_detected: 0, building_damage_level: 'Severe',
-        road_condition: 'Obstructed', infrastructure_status: 'Damaged',
-      }
-    },
-    {
-      name: '🏚️ Structural Collapse',
-      data: {
-        temperature: 25.0, humidity: 58.0, wind_speed: 10.0, air_quality_index: 260.0,
-        water_level: 0.3, vegetation_cover: 15.0, people_detected: 7, heat_signatures: 4,
-        hazardous_material_detected: 1, building_damage_level: 'Destroyed',
-        road_condition: 'Blocked', infrastructure_status: 'Severely Damaged',
-      }
-    },
-    {
-      name: '🛡️ Nominal Patrol',
-      data: {
-        temperature: 23.5, humidity: 55.0, wind_speed: 8.0, air_quality_index: 65.0,
-        water_level: 0.2, vegetation_cover: 75.0, people_detected: 0, heat_signatures: 0,
-        hazardous_material_detected: 0, building_damage_level: 'Undamaged',
-        road_condition: 'Intact', infrastructure_status: 'Intact',
-      }
-    }
-  ]
-
-  const submitScopeRecon = async () => {
-    setScopeLoading(true)
-    setScopeError('')
-    try {
-      const payload = {
-        ...scopeInputs,
-        temperature: parseFloat(scopeInputs.temperature) || 0,
-        humidity: parseFloat(scopeInputs.humidity) || 0,
-        wind_speed: parseFloat(scopeInputs.wind_speed) || 0,
-        air_quality_index: parseFloat(scopeInputs.air_quality_index) || 0,
-        water_level: parseFloat(scopeInputs.water_level) || 0,
-        vegetation_cover: parseFloat(scopeInputs.vegetation_cover) || 0,
-        people_detected: parseInt(scopeInputs.people_detected) || 0,
-        heat_signatures: parseInt(scopeInputs.heat_signatures) || 0,
-        hazardous_material_detected: parseInt(scopeInputs.hazardous_material_detected) || 0,
-      }
-      const { data } = await api.post('/predict/disaster-scope', payload)
-      setScopeResult(data)
-    } catch (err) {
-      setScopeError(err.response?.data?.detail || 'Reconnaissance analysis failed. Ensure DisasterScope model is trained.')
-    } finally {
-      setScopeLoading(false)
-    }
-  }
-
-
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
       {/* Header */}
@@ -205,28 +210,29 @@ export default function Predict() {
         <div className="flex items-center gap-2 mb-1">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Hazard Analysis</h1>
           <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-red-500/10 text-red-400 border border-red-500/20">
-            AI ESTIMATION ENGINE
+            DISASTERSCOPE 61K ENGINE
           </span>
         </div>
         <p className="text-xs text-zinc-400">
-          Environmental risk assessment using weather conditions and rainfall signals.
-          Image evidence is <strong>optional</strong> and used as secondary supporting telemetry.
+          Disaster risk evaluation trained on 61,368 historical environmental & structural attribute records.
+          Image evidence is <strong>optional</strong> supporting telemetry.
         </p>
       </div>
 
-      {/* ── Section 1: Current Environmental Risk (Primary) ── */}
-      <Section title="Current Environmental Risk" icon={ShieldAlert} defaultOpen>
+      {/* ── Section 1: Disaster & Environmental Risk Assessment (Primary) ── */}
+      <Section title="Disaster & Environmental Risk Assessment" icon={ShieldAlert} defaultOpen>
         <div className="pt-4 space-y-4">
           <div className="p-3 rounded-lg bg-red-500/8 border border-red-500/20 text-xs text-red-300 leading-relaxed flex items-start gap-2">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-red-400" />
             <span>
-              Calculates risk from <strong>live weather + precipitation forecast</strong>. 
-              No visual imagery required. Risk output is an <em>empirical estimate</em>.
+              Predicts comprehensive multi-hazard disaster severity and flood risk using the 
+              <strong> 61K DisasterScope Attribute Model</strong>.
             </span>
           </div>
 
           {riskResult && !riskResult.error ? (
             <div className="space-y-4">
+              {/* Primary Risk Gauge */}
               <div className="flex flex-col items-center gap-3 py-2">
                 <RiskGauge
                   riskScore={Math.round(riskResult.risk_score ?? 0)}
@@ -240,6 +246,73 @@ export default function Predict() {
                   </p>
                 )}
               </div>
+
+              {/* Multi-Target Verdict Summary Badges */}
+              {datasetComparison && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                  {/* Severity */}
+                  <div className="p-2.5 rounded-lg border border-slate-800 bg-slate-900/60 text-center">
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase block mb-0.5">Disaster Severity</span>
+                    <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded inline-block ${
+                      datasetComparison.disaster_severity_level === 'High' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                      datasetComparison.disaster_severity_level === 'Medium' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                      'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    }`}>
+                      {datasetComparison.disaster_severity_level || 'LOW'}
+                    </span>
+                  </div>
+
+                  {/* Area Type */}
+                  <div className="p-2.5 rounded-lg border border-slate-800 bg-slate-900/60 text-center">
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase block mb-0.5">Area Hazard Type</span>
+                    <span className="text-xs font-bold font-mono text-cyan-300 block truncate">
+                      {datasetComparison.affected_area_type || 'Unblocked'}
+                    </span>
+                  </div>
+
+                  {/* Immediate Action */}
+                  <div className={`p-2.5 rounded-lg border text-center ${
+                    datasetComparison.immediate_action_required === 'Yes'
+                      ? 'border-red-500/40 bg-red-950/30'
+                      : 'border-slate-800 bg-slate-900/60'
+                  }`}>
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase block mb-0.5">Action Status</span>
+                    <span className={`text-xs font-bold font-mono ${
+                      datasetComparison.immediate_action_required === 'Yes' ? 'text-red-400' : 'text-zinc-300'
+                    }`}>
+                      {datasetComparison.immediate_action_required === 'Yes' ? '🚨 REQUIRED' : 'STANDBY'}
+                    </span>
+                  </div>
+
+                  {/* Flood Probability */}
+                  <div className="p-2.5 rounded-lg border border-slate-800 bg-slate-900/60 text-center">
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase block mb-0.5">Flood Probability</span>
+                    <span className={`text-xs font-bold font-mono ${
+                      (datasetComparison.flood_probability || 0) >= 50 ? 'text-rose-400' : 'text-emerald-400'
+                    }`}>
+                      {datasetComparison.flood_probability ?? 0}%
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Tactical Directives / Orders */}
+              {datasetComparison?.recommendations?.length > 0 && (
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-950/80 space-y-1.5">
+                  <p className="text-[11px] font-mono uppercase text-amber-400 flex items-center gap-1.5 font-semibold">
+                    <Shield className="h-3.5 w-3.5" />
+                    Directives & Emergency Recommendations
+                  </p>
+                  <ul className="space-y-1 text-xs text-zinc-300">
+                    {datasetComparison.recommendations.map((rec, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-amber-500">•</span>
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Contributing factors */}
               {riskResult.contributing_factors?.length > 0 && (
@@ -291,6 +364,307 @@ export default function Predict() {
                   </div>
                 </div>
               )}
+
+              {/* Live Meteorological Telemetry Strip */}
+              <div className="p-3 rounded-lg border border-slate-800 bg-slate-950/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-mono uppercase text-zinc-400 flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                    Live Meteorological Telemetry
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-red-400" />
+                    {currentWeather?.location_name || riskResult?.location_name || 'Active Coordinate Node'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                  <div className="p-2 rounded bg-slate-900/80 border border-slate-800 text-center">
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase flex items-center justify-center gap-1">
+                      <Thermometer className="h-3 w-3 text-amber-400" /> Temp
+                    </span>
+                    <p className="text-xs font-mono font-bold text-zinc-200 mt-0.5">
+                      {currentWeather?.temperature != null ? `${currentWeather.temperature.toFixed(1)}°C` : '—'}
+                    </p>
+                  </div>
+                  <div className="p-2 rounded bg-slate-900/80 border border-slate-800 text-center">
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase flex items-center justify-center gap-1">
+                      <Droplets className="h-3 w-3 text-cyan-400" /> Humidity
+                    </span>
+                    <p className="text-xs font-mono font-bold text-zinc-200 mt-0.5">
+                      {currentWeather?.humidity != null ? `${currentWeather.humidity}%` : '—'}
+                    </p>
+                  </div>
+                  <div className="p-2 rounded bg-slate-900/80 border border-slate-800 text-center">
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase flex items-center justify-center gap-1">
+                      <Wind className="h-3 w-3 text-teal-400" /> Wind
+                    </span>
+                    <p className="text-xs font-mono font-bold text-zinc-200 mt-0.5">
+                      {currentWeather?.wind_speed != null ? `${(currentWeather.wind_speed * 3.6).toFixed(1)} km/h` : '—'}
+                    </p>
+                  </div>
+                  <div className="p-2 rounded bg-slate-900/80 border border-slate-800 text-center">
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase flex items-center justify-center gap-1">
+                      <Gauge className="h-3 w-3 text-indigo-400" /> Pressure
+                    </span>
+                    <p className="text-xs font-mono font-bold text-zinc-200 mt-0.5">
+                      {currentWeather?.pressure != null ? `${currentWeather.pressure} hPa` : '—'}
+                    </p>
+                  </div>
+                  <div className="p-2 rounded bg-slate-900/80 border border-slate-800 text-center col-span-2 sm:col-span-1">
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase flex items-center justify-center gap-1">
+                      <CloudRain className="h-3 w-3 text-blue-400" /> 24h Rain
+                    </span>
+                    <p className="text-xs font-mono font-bold text-zinc-200 mt-0.5">
+                      {currentWeather?.rainfall != null ? `${currentWeather.rainfall.toFixed(1)} mm` : '0.0 mm'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* DisasterScope 61K Environmental Benchmark Comparison */}
+              {datasetComparison?.dataset_benchmarks && (
+                <div className="p-4 rounded-xl border border-amber-500/20 bg-gradient-to-b from-amber-500/5 to-slate-950/80 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                        <Database className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-bold font-mono tracking-wide text-zinc-200 uppercase">
+                            DisasterScope 61K Benchmark
+                          </h4>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-amber-400/20 text-amber-300 border border-amber-400/30 font-semibold">
+                            61,368 RECORDS
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-zinc-400">
+                          Live atmospheric telemetry benchmarked against verified disaster distributions
+                        </p>
+                      </div>
+                    </div>
+
+                    {datasetComparison.flood_probability != null && (
+                      <div className="flex items-center gap-2 self-start sm:self-auto">
+                        <span className="text-[10px] font-mono text-zinc-400">Model Verdict:</span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold border ${
+                          datasetComparison.flood_probability >= 50
+                            ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                            : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                        }`}>
+                          {datasetComparison.flood_probability}% Flood Risk
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Benchmark Attribute Comparison Cards */}
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-mono uppercase text-zinc-500">
+                      Live Telemetry vs Dataset Norms (Mean ± Range)
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {datasetComparison.dataset_benchmarks.attributes?.map((attr) => {
+                        const min = attr.dataset_min
+                        const max = attr.dataset_max
+                        const current = attr.current_value
+                        const mean = attr.dataset_mean
+                        const pct = Math.max(0, Math.min(100, ((current - min) / (max - min)) * 100))
+                        const meanPct = Math.max(0, Math.min(100, ((mean - min) / (max - min)) * 100))
+
+                        return (
+                          <div
+                            key={attr.key}
+                            className="p-2.5 rounded-lg border border-slate-800/90 bg-slate-900/60 flex flex-col justify-between gap-2"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className="text-[11px] font-medium text-zinc-300 block">
+                                  {attr.label}
+                                </span>
+                                <span className="text-[10px] font-mono text-zinc-500">
+                                  Avg: {mean} {attr.unit} · Range: {min}–{max} {attr.unit}
+                                </span>
+                              </div>
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-slate-800 text-amber-300 border border-amber-500/20">
+                                {attr.status}
+                              </span>
+                            </div>
+
+                            <div>
+                              <div className="flex justify-between items-baseline mb-1">
+                                <span className="text-xs font-mono font-bold text-white">
+                                  {current} <span className="text-[10px] font-normal text-zinc-400">{attr.unit}</span>
+                                </span>
+                                <span className="text-[9px] font-mono text-zinc-500">
+                                  Benchmark μ: {mean} {attr.unit}
+                                </span>
+                              </div>
+
+                              <div className="relative h-2 bg-slate-800 rounded-full overflow-hidden">
+                                <div
+                                  className="absolute top-0 bottom-0 w-0.5 bg-amber-400/80 z-10"
+                                  style={{ left: `${meanPct}%` }}
+                                  title={`Dataset Mean: ${mean}`}
+                                />
+                                <div
+                                  className={`h-full rounded-full transition-all duration-700 ${
+                                    pct > 75 ? 'bg-red-500' : pct > 50 ? 'bg-orange-500' : 'bg-emerald-500'
+                                  }`}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Collapsible Site & Environmental Attributes Simulator */}
+              <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40">
+                <button
+                  type="button"
+                  onClick={() => setShowAttributeControls(!showAttributeControls)}
+                  className="w-full flex items-center justify-between p-3 bg-slate-900/50 hover:bg-slate-900 transition-colors text-left"
+                >
+                  <span className="flex items-center gap-2 text-xs font-mono uppercase text-zinc-300">
+                    <Sliders className="h-3.5 w-3.5 text-amber-400" />
+                    Customize DisasterScope Attributes & Simulate Risk
+                  </span>
+                  <span className="text-[11px] font-mono text-zinc-500 flex items-center gap-1">
+                    {showAttributeControls ? 'Hide Inputs' : 'Adjust Attributes'}
+                    {showAttributeControls ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  </span>
+                </button>
+
+                {showAttributeControls && (
+                  <div className="p-4 border-t border-slate-800/80 space-y-4">
+                    <p className="text-[11px] text-zinc-400">
+                      Directly evaluate how changes in environmental, structural, and life-safety attributes impact the model's predicted disaster risk score.
+                    </p>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[10px] font-mono text-zinc-400 block mb-1">Water Depth (m)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={attrInputs.water_level}
+                          onChange={(e) => setAttrInputs({ ...attrInputs, water_level: e.target.value })}
+                          className="input-control text-xs py-1.5 px-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-mono text-zinc-400 block mb-1">Air Quality (AQI)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="500"
+                          value={attrInputs.air_quality_index}
+                          onChange={(e) => setAttrInputs({ ...attrInputs, air_quality_index: e.target.value })}
+                          className="input-control text-xs py-1.5 px-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-mono text-zinc-400 block mb-1">Building Damage</label>
+                        <select
+                          value={attrInputs.building_damage_level}
+                          onChange={(e) => setAttrInputs({ ...attrInputs, building_damage_level: e.target.value })}
+                          className="input-control text-xs py-1.5 px-2"
+                        >
+                          <option value="Undamaged">Undamaged</option>
+                          <option value="Minor">Minor</option>
+                          <option value="Moderate">Moderate</option>
+                          <option value="Severe">Severe</option>
+                          <option value="Destroyed">Destroyed</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-mono text-zinc-400 block mb-1">Road Condition</label>
+                        <select
+                          value={attrInputs.road_condition}
+                          onChange={(e) => setAttrInputs({ ...attrInputs, road_condition: e.target.value })}
+                          className="input-control text-xs py-1.5 px-2"
+                        >
+                          <option value="Intact">Intact</option>
+                          <option value="Obstructed">Obstructed</option>
+                          <option value="Damaged">Damaged</option>
+                          <option value="Blocked">Blocked</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-mono text-zinc-400 block mb-1">Infrastructure</label>
+                        <select
+                          value={attrInputs.infrastructure_status}
+                          onChange={(e) => setAttrInputs({ ...attrInputs, infrastructure_status: e.target.value })}
+                          className="input-control text-xs py-1.5 px-2"
+                        >
+                          <option value="Intact">Intact</option>
+                          <option value="Damaged">Damaged</option>
+                          <option value="Severely Damaged">Severely Damaged</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-mono text-zinc-400 block mb-1">People Detected</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={attrInputs.people_detected}
+                          onChange={(e) => setAttrInputs({ ...attrInputs, people_detected: e.target.value })}
+                          className="input-control text-xs py-1.5 px-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-mono text-zinc-400 block mb-1">Heat Signatures</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={attrInputs.heat_signatures}
+                          onChange={(e) => setAttrInputs({ ...attrInputs, heat_signatures: e.target.value })}
+                          className="input-control text-xs py-1.5 px-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-mono text-zinc-400 block mb-1">Vegetation (%)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={attrInputs.vegetation_cover}
+                          onChange={(e) => setAttrInputs({ ...attrInputs, vegetation_cover: e.target.value })}
+                          className="input-control text-xs py-1.5 px-2"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 pt-4">
+                        <input
+                          type="checkbox"
+                          id="hazmat-toggle"
+                          checked={Boolean(attrInputs.hazardous_material_detected)}
+                          onChange={(e) => setAttrInputs({ ...attrInputs, hazardous_material_detected: e.target.checked ? 1 : 0 })}
+                          className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-400"
+                        />
+                        <label htmlFor="hazmat-toggle" className="text-xs text-amber-300 font-medium cursor-pointer">
+                          HAZMAT Detected
+                        </label>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={submitCustomAttributeRisk}
+                      disabled={riskLoading}
+                      className="w-full py-2 rounded-lg font-medium text-xs bg-amber-600 hover:bg-amber-500 text-white transition-all flex items-center justify-center gap-1.5"
+                    >
+                      {riskLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sliders className="h-3.5 w-3.5" />}
+                      Compute Risk from Custom Attributes
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="py-4 text-center">
@@ -304,6 +678,7 @@ export default function Predict() {
             <p className="text-xs text-red-400">{riskError}</p>
           )}
 
+          {/* Primary Action Button */}
           <button
             onClick={submitCombinedRisk}
             disabled={riskLoading}
@@ -318,316 +693,7 @@ export default function Predict() {
         </div>
       </Section>
 
-      {/* ── Section 2: Drone & Aerial Recon (DisasterScope AI) ── */}
-      <Section title="Drone Recon & Multi-Hazard Assessment" icon={Crosshair} iconColor="text-amber-400" defaultOpen={true}>
-        <div className="pt-4 space-y-4">
-          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 leading-relaxed flex items-start gap-2">
-            <Radio className="h-4 w-4 shrink-0 mt-0.5 text-amber-400 animate-pulse" />
-            <div>
-              <div className="flex items-center gap-2 mb-0.5">
-                <span className="font-bold text-amber-300">DisasterScope Drone Telemetry Engine</span>
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                  KAGGLE 61K DATASET
-                </span>
-              </div>
-              <p className="text-zinc-400 text-[11px]">
-                Analyzes drone sensor telemetry, structural destruction levels, and thermal signatures to classify hazard area type, immediate action urgency, and survivor presence.
-              </p>
-            </div>
-          </div>
-
-          {/* Preset scenarios */}
-          <div>
-            <label className="text-[11px] font-mono uppercase text-zinc-400 block mb-1.5">
-              Mission Simulation Presets
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {scopePresets.map((preset) => (
-                <button
-                  key={preset.name}
-                  type="button"
-                  onClick={() => {
-                    setScopeInputs(preset.data)
-                    setScopeResult(null)
-                  }}
-                  className="p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:border-amber-500/50 hover:bg-slate-800/80 transition-all text-left group"
-                >
-                  <span className="text-xs font-semibold text-zinc-200 group-hover:text-amber-300 block">
-                    {preset.name}
-                  </span>
-                  <span className="text-[10px] text-zinc-500">Apply telemetry</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Telemetry Input Form */}
-          <div className="space-y-3 pt-2">
-            <p className="text-[11px] font-mono uppercase text-zinc-400">Environmental Sensors</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Temp (°C)</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={scopeInputs.temperature}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, temperature: e.target.value })}
-                  className="input-control text-xs py-1.5 px-2"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Humidity (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={scopeInputs.humidity}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, humidity: e.target.value })}
-                  className="input-control text-xs py-1.5 px-2"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Wind Speed (km/h)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={scopeInputs.wind_speed}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, wind_speed: e.target.value })}
-                  className="input-control text-xs py-1.5 px-2"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Air Quality (AQI)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="500"
-                  value={scopeInputs.air_quality_index}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, air_quality_index: e.target.value })}
-                  className="input-control text-xs py-1.5 px-2"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Water Depth (m)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  value={scopeInputs.water_level}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, water_level: e.target.value })}
-                  className="input-control text-xs py-1.5 px-2"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Vegetation (%)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={scopeInputs.vegetation_cover}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, vegetation_cover: e.target.value })}
-                  className="input-control text-xs py-1.5 px-2"
-                />
-              </div>
-            </div>
-
-            <p className="text-[11px] font-mono uppercase text-zinc-400 pt-2">Reconnaissance & Structural Status</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 block mb-1">People Detected</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={scopeInputs.people_detected}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, people_detected: e.target.value })}
-                  className="input-control text-xs py-1.5 px-2"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Heat Signatures</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={scopeInputs.heat_signatures}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, heat_signatures: e.target.value })}
-                  className="input-control text-xs py-1.5 px-2"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Building Damage</label>
-                <select
-                  value={scopeInputs.building_damage_level}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, building_damage_level: e.target.value })}
-                  className="input-control text-xs py-1.5 px-2"
-                >
-                  <option value="Undamaged">Undamaged</option>
-                  <option value="Minor">Minor</option>
-                  <option value="Moderate">Moderate</option>
-                  <option value="Severe">Severe</option>
-                  <option value="Destroyed">Destroyed</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Road Condition</label>
-                <select
-                  value={scopeInputs.road_condition}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, road_condition: e.target.value })}
-                  className="input-control text-xs py-1.5 px-2"
-                >
-                  <option value="Intact">Intact</option>
-                  <option value="Obstructed">Obstructed</option>
-                  <option value="Damaged">Damaged</option>
-                  <option value="Blocked">Blocked</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Infrastructure Status</label>
-                <select
-                  value={scopeInputs.infrastructure_status}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, infrastructure_status: e.target.value })}
-                  className="input-control text-xs py-1.5 px-2"
-                >
-                  <option value="Intact">Intact</option>
-                  <option value="Damaged">Damaged</option>
-                  <option value="Severely Damaged">Severely Damaged</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2 pt-5">
-                <input
-                  type="checkbox"
-                  id="hazmat-check"
-                  checked={Boolean(scopeInputs.hazardous_material_detected)}
-                  onChange={(e) => setScopeInputs({ ...scopeInputs, hazardous_material_detected: e.target.checked ? 1 : 0 })}
-                  className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-400"
-                />
-                <label htmlFor="hazmat-check" className="text-xs text-amber-300 font-medium cursor-pointer">
-                  HAZMAT Detected
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={submitScopeRecon}
-            disabled={scopeLoading}
-            className="w-full py-2.5 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-900/30"
-          >
-            {scopeLoading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Evaluating Drone Telemetry...</>
-            ) : (
-              <><Crosshair className="h-4 w-4" /> Run DisasterScope Assessment</>
-            )}
-          </button>
-
-          {scopeError && (
-            <p className="text-xs text-red-400 p-2.5 rounded bg-red-500/10 border border-red-500/20">
-              ⚠️ {scopeError}
-            </p>
-          )}
-
-          {/* Results Display */}
-          {scopeResult && (
-            <div className="space-y-4 pt-3 border-t border-slate-800 animate-fadeIn">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {/* Severity */}
-                <div className="p-3 rounded-lg border border-slate-800 bg-slate-950/70 text-center">
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase block mb-1">Disaster Severity</span>
-                  <span className={`text-sm font-bold font-mono px-2 py-0.5 rounded inline-block ${
-                    scopeResult.disaster_severity_level === 'High' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
-                    scopeResult.disaster_severity_level === 'Medium' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                    'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  }`}>
-                    {scopeResult.disaster_severity_level.toUpperCase()}
-                  </span>
-                  <p className="text-[9px] font-mono text-zinc-500 mt-1">
-                    {scopeResult.severity_probabilities?.[scopeResult.disaster_severity_level] || 0}% prob
-                  </p>
-                </div>
-
-                {/* Area Type */}
-                <div className="p-3 rounded-lg border border-slate-800 bg-slate-950/70 text-center">
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase block mb-1">Hazard Area Type</span>
-                  <span className="text-xs font-bold font-mono text-cyan-300 block truncate">
-                    {scopeResult.affected_area_type}
-                  </span>
-                  <p className="text-[9px] font-mono text-zinc-500 mt-1">
-                    {scopeResult.area_type_probabilities?.[scopeResult.affected_area_type] || 0}% match
-                  </p>
-                </div>
-
-                {/* Immediate Action */}
-                <div className={`p-3 rounded-lg border text-center ${
-                  scopeResult.immediate_action_required === 'Yes'
-                    ? 'border-red-500/40 bg-red-950/30'
-                    : 'border-slate-800 bg-slate-950/70'
-                }`}>
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase block mb-1">Immediate Action</span>
-                  <span className={`text-sm font-bold font-mono ${
-                    scopeResult.immediate_action_required === 'Yes' ? 'text-red-400' : 'text-zinc-300'
-                  }`}>
-                    {scopeResult.immediate_action_required === 'Yes' ? '🚨 REQUIRED' : 'STANDBY'}
-                  </span>
-                  <p className="text-[9px] font-mono text-zinc-500 mt-1">
-                    {scopeResult.immediate_action_probability}% urgency
-                  </p>
-                </div>
-
-                {/* Survivor Likelihood */}
-                <div className="p-3 rounded-lg border border-slate-800 bg-slate-950/70 text-center">
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase block mb-1">Survivor Likelihood</span>
-                  <span className={`text-sm font-bold font-mono ${
-                    scopeResult.survivor_presence_likelihood === 'High' ? 'text-purple-400' : 'text-zinc-400'
-                  }`}>
-                    {scopeResult.survivor_presence_likelihood.toUpperCase()}
-                  </span>
-                  <p className="text-[9px] font-mono text-zinc-500 mt-1">
-                    {scopeResult.survivor_probability}% conf
-                  </p>
-                </div>
-              </div>
-
-              {/* Urgency Progress Bar */}
-              <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-1.5">
-                <div className="flex justify-between items-center text-[11px] font-mono">
-                  <span className="text-zinc-300">Composite Mission Urgency Score</span>
-                  <span className="font-bold text-amber-400">{scopeResult.urgency_score}/100</span>
-                </div>
-                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-700 ${
-                      scopeResult.urgency_score > 60 ? 'bg-gradient-to-r from-orange-500 to-red-500' :
-                      scopeResult.urgency_score > 30 ? 'bg-gradient-to-r from-yellow-500 to-amber-500' :
-                      'bg-emerald-500'
-                    }`}
-                    style={{ width: `${Math.min(100, scopeResult.urgency_score)}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Recommendations */}
-              {scopeResult.recommendations?.length > 0 && (
-                <div className="p-3 rounded-lg border border-slate-800 bg-slate-950/80 space-y-1.5">
-                  <p className="text-[11px] font-mono uppercase text-amber-400 flex items-center gap-1.5 font-semibold">
-                    <Shield className="h-3.5 w-3.5" />
-                    Tactical Directives & Direct Orders
-                  </p>
-                  <ul className="space-y-1 text-xs text-zinc-300">
-                    {scopeResult.recommendations.map((rec, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <span className="text-amber-500">•</span>
-                        <span>{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </Section>
-
-      {/* ── Section 3: Rainfall Forecast (LSTM) ── */}
+      {/* ── Section 2: Rainfall Forecast (LSTM) ── */}
       <Section title="Rainfall Forecast (LSTM)" icon={CloudRain} iconColor="text-cyan-400" defaultOpen={false}>
         <div className="pt-4 space-y-4">
           <p className="text-xs text-slate-400">
@@ -700,7 +766,6 @@ export default function Predict() {
       {/* ── Section 3: Visual Check (Optional, secondary) ── */}
       <Section title="Optional: Visual Flood Check (Image)" icon={Camera} iconColor="text-zinc-400" defaultOpen={false}>
         <div className="pt-4 space-y-4">
-          {/* Disclaimer */}
           <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-zinc-400 leading-relaxed flex items-start gap-2">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-zinc-400" />
             <span>
