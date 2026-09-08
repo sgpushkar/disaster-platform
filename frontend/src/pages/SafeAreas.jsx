@@ -54,6 +54,7 @@ export default function SafeAreas() {
   const [selected, setSelected] = useState(null)
   const [route, setRoute] = useState(null)
   const [routeLoading, setRouteLoading] = useState(false)
+  const [mapStyle, setMapStyle] = useState('voyager')
 
   const fetchSafeAreas = useCallback(async (lat, lon) => {
     setLoading(true)
@@ -305,17 +306,84 @@ export default function SafeAreas() {
 
         {/* Map */}
         <div className="lg:col-span-3">
-          <div className="card-panel p-2 sticky top-20">
+          <div className="card-panel p-2 sticky top-20 relative overflow-hidden">
+            {/* Map Layer Style Switcher */}
+            <div className="absolute top-4 right-4 z-[1000] flex items-center bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl gap-1">
+              <button
+                type="button"
+                onClick={() => setMapStyle('voyager')}
+                className={`px-2 py-1 rounded-lg text-[11px] font-mono font-medium transition-all ${
+                  mapStyle === 'voyager'
+                    ? 'bg-red-600 text-white shadow-sm font-bold'
+                    : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+                title="Detailed street map with full place names, localities, landmarks, and roads"
+              >
+                🗺️ Streets & Places
+              </button>
+              <button
+                type="button"
+                onClick={() => setMapStyle('dark')}
+                className={`px-2 py-1 rounded-lg text-[11px] font-mono font-medium transition-all ${
+                  mapStyle === 'dark'
+                    ? 'bg-red-600 text-white shadow-sm font-bold'
+                    : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+                title="Tactical dark mode with place and road labels"
+              >
+                🌙 Dark
+              </button>
+              <button
+                type="button"
+                onClick={() => setMapStyle('satellite')}
+                className={`px-2 py-1 rounded-lg text-[11px] font-mono font-medium transition-all ${
+                  mapStyle === 'satellite'
+                    ? 'bg-red-600 text-white shadow-sm font-bold'
+                    : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+                title="Satellite photography with places and road boundaries"
+              >
+                🛰️ Satellite
+              </button>
+            </div>
+
             <MapContainer
               center={mapCenter}
               zoom={13}
               className="h-[520px] w-full rounded-lg"
             >
-              <TileLayer
-                attribution='Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-                maxZoom={16}
-              />
+              {mapStyle === 'voyager' && (
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                  subdomains="abcd"
+                  maxZoom={20}
+                />
+              )}
+
+              {mapStyle === 'dark' && (
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  subdomains="abcd"
+                  maxZoom={20}
+                />
+              )}
+
+              {mapStyle === 'satellite' && (
+                <>
+                  <TileLayer
+                    attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    maxZoom={18}
+                  />
+                  <TileLayer
+                    attribution='&copy; Esri'
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+                    maxZoom={18}
+                  />
+                </>
+              )}
               {userLoc && <MapUpdater center={[userLoc.lat, userLoc.lon]} />}
 
               {/* User location */}
