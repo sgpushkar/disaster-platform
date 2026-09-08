@@ -54,7 +54,7 @@ export default function SafeAreas() {
   const [selected, setSelected] = useState(null)
   const [route, setRoute] = useState(null)
   const [routeLoading, setRouteLoading] = useState(false)
-  const [mapStyle, setMapStyle] = useState('voyager')
+  const [mapStyle, setMapStyle] = useState('streets')
 
   const fetchSafeAreas = useCallback(async (lat, lon) => {
     setLoading(true)
@@ -311,27 +311,27 @@ export default function SafeAreas() {
             <div className="absolute top-4 right-4 z-[1000] flex items-center bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl gap-1">
               <button
                 type="button"
-                onClick={() => setMapStyle('voyager')}
+                onClick={() => setMapStyle('streets')}
                 className={`px-2 py-1 rounded-lg text-[11px] font-mono font-medium transition-all ${
-                  mapStyle === 'voyager'
+                  mapStyle === 'streets'
                     ? 'bg-red-600 text-white shadow-sm font-bold'
                     : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
                 }`}
-                title="Detailed street map with full place names, localities, landmarks, and roads"
+                title="Detailed street map"
               >
-                🗺️ Streets & Places
+                🗺️ Streets
               </button>
               <button
                 type="button"
-                onClick={() => setMapStyle('dark')}
+                onClick={() => setMapStyle('topo')}
                 className={`px-2 py-1 rounded-lg text-[11px] font-mono font-medium transition-all ${
-                  mapStyle === 'dark'
+                  mapStyle === 'topo'
                     ? 'bg-red-600 text-white shadow-sm font-bold'
                     : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
                 }`}
-                title="Tactical dark mode with place and road labels"
+                title="Topographic terrain"
               >
-                🌙 Dark
+                ⛰️ Topo
               </button>
               <button
                 type="button"
@@ -341,7 +341,7 @@ export default function SafeAreas() {
                     ? 'bg-red-600 text-white shadow-sm font-bold'
                     : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
                 }`}
-                title="Satellite photography with places and road boundaries"
+                title="Satellite photography"
               >
                 🛰️ Satellite
               </button>
@@ -352,21 +352,19 @@ export default function SafeAreas() {
               zoom={13}
               className="h-[520px] w-full rounded-lg"
             >
-              {mapStyle === 'voyager' && (
+              {mapStyle === 'streets' && (
                 <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                  subdomains="abcd"
-                  maxZoom={20}
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  maxZoom={19}
                 />
               )}
 
-              {mapStyle === 'dark' && (
+              {mapStyle === 'topo' && (
                 <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                  subdomains="abcd"
-                  maxZoom={20}
+                  attribution='Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, METI, NRCAN, GeoBase, Kadaster NL, Ordnance Survey'
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+                  maxZoom={19}
                 />
               )}
 

@@ -99,7 +99,9 @@ export default function Navbar() {
           </Link>
 
           <div className="flex flex-col items-end">
-            <span className="text-xs font-medium text-zinc-200 truncate max-w-[120px] sm:max-w-none">{user.name}</span>
+            <span className="text-xs font-medium text-zinc-200 truncate max-w-[120px] sm:max-w-none">
+              {user.name && !/pushkar/i.test(user.name) ? user.name : 'Operations Officer'}
+            </span>
             <span className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded ${
               user.role === 'admin' 
                 ? 'text-red-400 bg-red-500/10 border border-red-500/25 font-bold' 

@@ -149,3 +149,8 @@
 .user-gps-pulse {
   animation: gps-pulse 2s infinite;
 }
+
+/* Dark theme filter for standard OpenStreetMap tiles - eliminates need for watermarked Carto tiles */
+.map-dark-tiles {
+  filter: invert(100%) hue-rotate(180deg) brightness(90%) contrast(105%);
+}

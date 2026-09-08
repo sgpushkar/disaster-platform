@@ -104,7 +104,7 @@ export default function MapView() {
   const [locating, setLocating] = useState(false)
   const [userLoc, setUserLoc] = useState(null)
   const [flyTarget, setFlyTarget] = useState(null)
-  const [mapStyle, setMapStyle] = useState('voyager')
+  const [mapStyle, setMapStyle] = useState('streets')
 
   const [mapBounds, setMapBounds] = useState(null)
   const defaultCenter = [19.0760, 72.8777] // Default Mumbai tactical center
@@ -311,15 +311,15 @@ export default function MapView() {
         <div className="absolute top-4 right-4 z-[1000] flex items-center bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl gap-1">
           <button
             type="button"
-            onClick={() => setMapStyle('voyager')}
+            onClick={() => setMapStyle('streets')}
             className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
-              mapStyle === 'voyager'
+              mapStyle === 'streets'
                 ? 'bg-red-600 text-white shadow-sm font-bold'
                 : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
             }`}
-            title="Detailed street map with full place names, localities, landmarks, and roads"
+            title="Detailed OpenStreetMap with full place names, localities, landmarks, and roads"
           >
-            🗺️ Places & Streets
+            🗺️ Places &amp; Streets
           </button>
           <button
             type="button"
@@ -329,9 +329,21 @@ export default function MapView() {
                 ? 'bg-red-600 text-white shadow-sm font-bold'
                 : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
             }`}
-            title="Tactical dark mode with place and road labels"
+            title="Tactical dark mode with places, roads, and zero watermarks"
           >
             🌙 Dark
+          </button>
+          <button
+            type="button"
+            onClick={() => setMapStyle('topo')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+              mapStyle === 'topo'
+                ? 'bg-red-600 text-white shadow-sm font-bold'
+                : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+            title="Topographic terrain with elevation contours, landmarks, and roads"
+          >
+            ⛰️ Topo
           </button>
           <button
             type="button"
@@ -355,21 +367,28 @@ export default function MapView() {
           <MapFlyController target={flyTarget} />
           <MapBoundsComponent setBounds={setMapBounds} />
           
-          {mapStyle === 'voyager' && (
+          {mapStyle === 'streets' && (
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-              subdomains="abcd"
-              maxZoom={20}
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              maxZoom={19}
             />
           )}
 
           {mapStyle === 'dark' && (
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              subdomains="abcd"
-              maxZoom={20}
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              className="map-dark-tiles"
+              maxZoom={19}
+            />
+          )}
+
+          {mapStyle === 'topo' && (
+            <TileLayer
+              attribution='Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, METI, NRCAN, GeoBase, Kadaster NL, Ordnance Survey'
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+              maxZoom={19}
             />
           )}
 
@@ -383,6 +402,11 @@ export default function MapView() {
               <TileLayer
                 attribution='&copy; Esri'
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+                maxZoom={18}
+              />
+              <TileLayer
+                attribution='&copy; Esri'
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}"
                 maxZoom={18}
               />
             </>

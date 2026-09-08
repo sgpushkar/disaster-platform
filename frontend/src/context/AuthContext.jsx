@@ -9,7 +9,18 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('user')
-    if (stored) setUser(JSON.parse(stored))
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (parsed?.name && /pushkar/i.test(parsed.name)) {
+          parsed.name = 'Operations Officer'
+          localStorage.setItem('user', JSON.stringify(parsed))
+        }
+        setUser(parsed)
+      } catch (_) {
+        setUser(null)
+      }
+    }
     setLoading(false)
   }, [])
 
