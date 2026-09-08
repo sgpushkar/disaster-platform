@@ -307,56 +307,69 @@ export default function MapView() {
 
       {/* Map Container */}
       <div className="card-panel p-2 relative overflow-hidden">
-        {/* Layer Style Selector */}
-        <div className="absolute top-4 right-4 z-[1000] flex items-center bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl gap-1">
-          <button
-            type="button"
-            onClick={() => setMapStyle('streets')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
-              mapStyle === 'streets'
-                ? 'bg-red-600 text-white shadow-sm font-bold'
-                : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-            title="Detailed OpenStreetMap with full place names, localities, landmarks, and roads"
-          >
-            🗺️ Places &amp; Streets
-          </button>
-          <button
-            type="button"
-            onClick={() => setMapStyle('dark')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
-              mapStyle === 'dark'
-                ? 'bg-red-600 text-white shadow-sm font-bold'
-                : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-            title="Tactical dark mode with places, roads, and zero watermarks"
-          >
-            🌙 Dark
-          </button>
-          <button
-            type="button"
-            onClick={() => setMapStyle('topo')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
-              mapStyle === 'topo'
-                ? 'bg-red-600 text-white shadow-sm font-bold'
-                : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-            title="Topographic terrain with elevation contours, landmarks, and roads"
-          >
-            ⛰️ Topo
-          </button>
-          <button
-            type="button"
-            onClick={() => setMapStyle('satellite')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
-              mapStyle === 'satellite'
-                ? 'bg-red-600 text-white shadow-sm font-bold'
-                : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-            title="Satellite photography with places and road boundaries"
-          >
-            🛰️ Satellite
-          </button>
+        {/* Unified Map Controls Toolbar: Recenter + Style Switcher */}
+        <div className="absolute top-4 right-4 z-[1000] flex flex-wrap items-center gap-2">
+          {userLoc && (
+            <button
+              onClick={() => setFlyTarget({ lat: userLoc.lat, lon: userLoc.lon, zoom: 15 })}
+              className="bg-slate-900/90 border border-slate-700 hover:border-blue-500 text-blue-400 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-mono font-semibold flex items-center gap-1.5 shadow-xl backdrop-blur-md transition-all active:scale-95"
+              title="Recenter map on your exact GPS coordinates"
+            >
+              <Navigation className="h-3.5 w-3.5 text-blue-500" />
+              <span>Recenter</span>
+            </button>
+          )}
+
+          <div className="flex items-center bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl gap-1">
+            <button
+              type="button"
+              onClick={() => setMapStyle('streets')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+                mapStyle === 'streets'
+                  ? 'bg-red-600 text-white shadow-sm font-bold'
+                  : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+              title="Detailed OpenStreetMap with full place names, localities, landmarks, and roads"
+            >
+              🗺️ Places &amp; Streets
+            </button>
+            <button
+              type="button"
+              onClick={() => setMapStyle('dark')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+                mapStyle === 'dark'
+                  ? 'bg-red-600 text-white shadow-sm font-bold'
+                  : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+              title="Tactical dark mode with places, roads, and zero watermarks"
+            >
+              🌙 Dark
+            </button>
+            <button
+              type="button"
+              onClick={() => setMapStyle('topo')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+                mapStyle === 'topo'
+                  ? 'bg-red-600 text-white shadow-sm font-bold'
+                  : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+              title="Topographic terrain with elevation contours, landmarks, and roads"
+            >
+              ⛰️ Topo
+            </button>
+            <button
+              type="button"
+              onClick={() => setMapStyle('satellite')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+                mapStyle === 'satellite'
+                  ? 'bg-red-600 text-white shadow-sm font-bold'
+                  : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+              title="Satellite photography with places and road boundaries"
+            >
+              🛰️ Satellite
+            </button>
+          </div>
         </div>
 
         <MapContainer
@@ -533,17 +546,6 @@ export default function MapView() {
             </React.Fragment>
           ))}
         </MapContainer>
-
-        {/* Quick floating center button */}
-        {userLoc && (
-          <button
-            onClick={() => setFlyTarget({ lat: userLoc.lat, lon: userLoc.lon, zoom: 15 })}
-            className="absolute top-5 right-5 z-[1000] bg-slate-900/90 border border-slate-700 hover:border-blue-500 text-blue-400 hover:text-white px-3 py-2 rounded-lg text-xs font-mono font-semibold flex items-center gap-1.5 shadow-xl backdrop-blur-md transition-all"
-          >
-            <Navigation className="h-3.5 w-3.5 text-blue-500" />
-            Recenter on Me
-          </button>
-        )}
 
         {/* Legend */}
         <div className="absolute bottom-5 right-5 z-[1000] bg-slate-900/95 border border-slate-800 rounded-lg p-3 shadow-lg text-[11px] font-mono space-y-1.5 backdrop-blur-md hidden sm:block">
