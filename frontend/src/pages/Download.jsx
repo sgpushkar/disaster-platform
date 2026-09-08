@@ -8,7 +8,7 @@ import {
 
 const APK_URL = '/disaster-intel.apk'
 const APP_VERSION = '1.0.0'
-const APP_SIZE = '18.4 MB'
+const APP_SIZE = '24.1 MB'
 const MIN_ANDROID = 'Android 7.0+'
 
 const FEATURES = [
