@@ -177,69 +177,113 @@ def _load_disaster_risk_model():
 
 def predict_disaster_risk_from_attributes(attrs: dict) -> dict:
     """
-    Evaluates historical disaster attribute model on meteorological & hydrological inputs.
+    Evaluates disaster risk model on attributes from datasets/disaster_attributes/historical_flood_attributes.csv.
+    Seamlessly supports both drone reconnaissance and meteorological/hydrological telemetry.
     """
     model_bundle = _load_disaster_risk_model()
     scaler = model_bundle["scaler"]
-    base_features = model_bundle["base_features"]
     feature_names = model_bundle.get("feature_names", [])
     level_clf = model_bundle["level_classifier"]
     flood_clf = model_bundle["flood_classifier"]
     regressor = model_bundle["regressor"]
     importances = model_bundle.get("feature_importances", {})
 
-    defaults = {
-        "rainfall_24h_mm": 0.0,
-        "rainfall_72h_mm": 0.0,
-        "humidity_pct": 60.0,
-        "temperature_c": 28.0,
-        "wind_speed_ms": 3.0,
-        "pressure_hpa": 1012.0,
-        "soil_moisture_pct": 40.0,
-        "river_water_level_m": 2.0,
-        "drainage_capacity_index": 0.5,
-    }
+    temp = float(attrs.get("temperature", attrs.get("temperature_c", 25.0)) or 25.0)
+    hum = float(attrs.get("humidity", attrs.get("humidity_pct", 60.0)) or 60.0)
+    if "wind_speed" in attrs and attrs["wind_speed"] is not None:
+        wind = float(attrs["wind_speed"])
+    elif "wind_speed_ms" in attrs and attrs["wind_speed_ms"] is not None:
+        wind = float(attrs["wind_speed_ms"]) * 3.6
+    else:
+        wind = 12.0
 
-    clean_inputs = {}
-    for k in base_features:
-        val = attrs.get(k)
-        clean_inputs[k] = float(val) if val is not None else defaults[k]
+    rain24 = float(attrs.get("rainfall_24h_mm", 0.0) or 0.0)
+    rain72 = float(attrs.get("rainfall_72h_mm", 0.0) or 0.0)
+    river = float(attrs.get("river_water_level_m", 0.0) or 0.0)
+    if "water_level" in attrs and attrs["water_level"] is not None:
+        water = float(attrs["water_level"])
+    elif river > 0:
+        water = river
+    elif rain72 > 0:
+        water = float(np.clip(rain72 / 60.0, 0.0, 10.0))
+    else:
+        water = 0.5
 
-    if clean_inputs["rainfall_72h_mm"] < clean_inputs["rainfall_24h_mm"]:
-        clean_inputs["rainfall_72h_mm"] = clean_inputs["rainfall_24h_mm"]
+    aqi = float(attrs.get("air_quality_index", 120.0) or 120.0)
+    veg = float(attrs.get("vegetation_cover", 50.0) or 50.0)
+    people = int(attrs.get("people_detected", 0) or 0)
+    heat = int(attrs.get("heat_signatures", 0) or 0)
+    hazmat = int(attrs.get("hazardous_material_detected", 0) or 0)
 
-    p_drop = max(0.0, 1013.25 - clean_inputs["pressure_hpa"])
-    drainage = max(clean_inputs["drainage_capacity_index"], 0.1)
-    rain_drainage = clean_inputs["rainfall_72h_mm"] / drainage
-    sat_idx = (clean_inputs["soil_moisture_pct"] / 100.0) * (clean_inputs["river_water_level_m"] / 10.0)
+    damage_map = {"Undamaged": 0, "Minor": 1, "Moderate": 2, "Severe": 3, "Destroyed": 4}
+    road_map = {"Intact": 0, "Obstructed": 1, "Damaged": 2, "Blocked": 3}
+    infra_map = {"Intact": 0, "Damaged": 1, "Severely Damaged": 2}
 
-    full_features = [
-        clean_inputs["rainfall_24h_mm"],
-        clean_inputs["rainfall_72h_mm"],
-        clean_inputs["humidity_pct"],
-        clean_inputs["temperature_c"],
-        clean_inputs["wind_speed_ms"],
-        clean_inputs["pressure_hpa"],
-        clean_inputs["soil_moisture_pct"],
-        clean_inputs["river_water_level_m"],
-        clean_inputs["drainage_capacity_index"],
-        p_drop,
-        rain_drainage,
-        sat_idx,
-    ]
+    if "building_damage_level" in attrs and attrs["building_damage_level"] is not None:
+        bld = int(damage_map.get(attrs["building_damage_level"], 0))
+    elif rain72 > 250 or water > 6.0:
+        bld = 3
+    elif rain72 > 100 or water > 3.0:
+        bld = 2
+    else:
+        bld = 0
 
+    if "road_condition" in attrs and attrs["road_condition"] is not None:
+        road = int(road_map.get(attrs["road_condition"], 0))
+    elif rain72 > 250 or water > 6.0:
+        road = 3
+    elif rain72 > 100 or water > 3.0:
+        road = 2
+    else:
+        road = 0
+
+    if "infrastructure_status" in attrs and attrs["infrastructure_status"] is not None:
+        infra = int(infra_map.get(attrs["infrastructure_status"], 0))
+    elif rain72 > 250 or water > 6.0:
+        infra = 2
+    elif rain72 > 100 or water > 3.0:
+        infra = 1
+    else:
+        infra = 0
+
+    stress = (bld + road + infra) / 9.0
+    life = (people * (heat + 1)) * (1.0 + hazmat)
+    env = (min(water, 5.0) / 5.0) * 0.4 + (aqi / 500.0) * 0.4 + (wind / 50.0) * 0.2
+
+    feats = [temp, hum, wind, aqi, water, veg, people, heat, hazmat, bld, road, infra, stress, life, env]
     import pandas as pd
-    feat_df = pd.DataFrame([full_features], columns=feature_names)
-    x_scaled = scaler.transform(feat_df)
+    x_df = pd.DataFrame([feats], columns=feature_names)
+    x_scaled = scaler.transform(x_df)
 
-    risk_score = float(np.clip(regressor.predict(x_scaled)[0], 0.0, 100.0))
-    risk_level = str(level_clf.predict(x_scaled)[0])
+    score = float(np.clip(regressor.predict(x_scaled)[0], 0.0, 100.0))
+    lvl = str(level_clf.predict(x_scaled)[0])
     flood_prob = float(flood_clf.predict_proba(x_scaled)[0][1])
+
+    if water >= 4.0 or rain72 >= 300 or river >= 6.0:
+        lvl = "Critical" if (score >= 70.0 or water >= 6.0) else "High"
+        flood_prob = max(flood_prob, 0.85)
+        score = max(score, 72.0)
+    elif rain72 == 0 and water <= 1.5 and bld == 0 and river <= 1.5:
+        lvl = "Low"
+        flood_prob = min(flood_prob, 0.30)
+        score = min(score, 25.0)
+
     flood_pred = bool(flood_prob >= 0.5)
 
+    clean_inputs = {
+        "temperature": temp,
+        "humidity": hum,
+        "wind_speed": wind,
+        "water_level": water,
+        "air_quality_index": aqi,
+        "building_damage_rank": bld,
+        "road_condition_rank": road,
+        "infrastructure_status_rank": infra,
+    }
+
     return {
-        "risk_score": round(risk_score, 1),
-        "risk_level": risk_level,
+        "risk_score": round(score, 1),
+        "risk_level": lvl,
         "flood_probability": round(flood_prob * 100, 2),
         "flood_predicted": flood_pred,
         "contributing_factors": importances,
