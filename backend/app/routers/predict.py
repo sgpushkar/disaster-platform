@@ -15,10 +15,12 @@ from app.schemas.schemas import (
     FloodImageOut, RainfallPredictRequest, RainfallPredictOut,
     CombinedRiskRequest, CombinedRiskOut,
     DisasterAttributePredictRequest, DisasterAttributePredictOut,
+    DisasterScopePredictRequest, DisasterScopePredictOut,
 )
 from app.ml.inference import (
     predict_flood_image, predict_rainfall,
-    predict_disaster_risk_from_attributes, ModelNotTrainedError,
+    predict_disaster_risk_from_attributes, predict_disaster_scope,
+    ModelNotTrainedError,
 )
 from app.services.risk_engine import compute_risk_score
 
@@ -172,3 +174,56 @@ def predict_disaster_attribute_risk(
     db.commit()
 
     return DisasterAttributePredictOut(**result)
+
+
+@router.post("/predict/disaster-scope", response_model=DisasterScopePredictOut)
+def predict_disaster_scope_recon(
+    payload: DisasterScopePredictRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Evaluates DisasterScope multi-target model from drone/aerial reconnaissance telemetry.
+    Optionally auto-populates live ambient temperature, humidity, and wind speed from the database.
+    """
+    telemetry = {
+        "temperature": payload.temperature,
+        "humidity": payload.humidity,
+        "wind_speed": payload.wind_speed,
+        "air_quality_index": payload.air_quality_index,
+        "water_level": payload.water_level,
+        "vegetation_cover": payload.vegetation_cover,
+        "people_detected": payload.people_detected,
+        "heat_signatures": payload.heat_signatures,
+        "hazardous_material_detected": payload.hazardous_material_detected,
+        "building_damage_level": payload.building_damage_level,
+        "road_condition": payload.road_condition,
+        "infrastructure_status": payload.infrastructure_status,
+    }
+
+    if payload.use_latest_weather:
+        latest = db.query(WeatherData).order_by(WeatherData.timestamp.desc()).first()
+        if latest:
+            if telemetry["temperature"] is None:
+                telemetry["temperature"] = latest.temperature
+            if telemetry["humidity"] is None:
+                telemetry["humidity"] = latest.humidity
+            if telemetry["wind_speed"] is None:
+                telemetry["wind_speed"] = latest.wind_speed
+
+    try:
+        result = predict_disaster_scope(telemetry)
+    except ModelNotTrainedError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    db.add(Prediction(
+        user_id=current_user.id,
+        prediction_type="disaster_scope_recon",
+        confidence=result["immediate_action_probability"],
+        risk_level=result["disaster_severity_level"],
+        risk_score=result["urgency_score"],
+        details_json=json.dumps(result),
+    ))
+    db.commit()
+
+    return DisasterScopePredictOut(**result)

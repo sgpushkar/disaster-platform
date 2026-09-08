@@ -245,3 +245,136 @@ def predict_disaster_risk_from_attributes(attrs: dict) -> dict:
         "contributing_factors": importances,
         "input_attributes": clean_inputs,
     }
+
+
+@lru_cache(maxsize=1)
+def _load_disasterscope_model():
+    path = _find_model_file("disasterscope_model.joblib")
+    if not path:
+        raise ModelNotTrainedError(
+            "DisasterScope reconnaissance model not trained. Run `python ml/train_disasterscope_model.py`."
+        )
+    return joblib.load(path)
+
+
+def predict_disaster_scope(telemetry: dict) -> dict:
+    """
+    Evaluates DisasterScope multi-target model from drone/aerial reconnaissance telemetry.
+    Predicts:
+    1. Disaster Severity Level ('Low', 'Medium', 'High') + class probabilities
+    2. Affected Area Type ('Unblocked', 'Flooded', 'Fire-Damaged', 'Collapsed Structure') + probabilities
+    3. Immediate Action Required ('Yes', 'No') + probability
+    4. Survivor Presence Likelihood ('Low', 'High') + probability
+    """
+    bundle = _load_disasterscope_model()
+    scaler = bundle["scaler"]
+    feature_names = bundle["feature_names"]
+    damage_map = bundle.get("damage_map", {"Undamaged": 0, "Minor": 1, "Moderate": 2, "Severe": 3, "Destroyed": 4})
+    road_map = bundle.get("road_map", {"Intact": 0, "Obstructed": 1, "Damaged": 2, "Blocked": 3})
+    infra_map = bundle.get("infra_map", {"Intact": 0, "Damaged": 1, "Severely Damaged": 2})
+    models = bundle["models"]
+    feature_importances = bundle.get("feature_importances", {})
+
+    temp = float(telemetry.get("temperature", 25.0))
+    hum = float(telemetry.get("humidity", 60.0))
+    wind = float(telemetry.get("wind_speed", 10.0))
+    aqi = float(telemetry.get("air_quality_index", 120.0))
+    water = float(telemetry.get("water_level", 0.5))
+    veg = float(telemetry.get("vegetation_cover", 50.0))
+    people = int(telemetry.get("people_detected", 0))
+    heat = int(telemetry.get("heat_signatures", 0))
+    hazmat = int(telemetry.get("hazardous_material_detected", 0))
+
+    bld_str = str(telemetry.get("building_damage_level", "Undamaged"))
+    road_str = str(telemetry.get("road_condition", "Intact"))
+    infra_str = str(telemetry.get("infrastructure_status", "Intact"))
+
+    bld_rank = int(damage_map.get(bld_str, 0))
+    road_rank = int(road_map.get(road_str, 0))
+    infra_rank = int(infra_map.get(infra_str, 0))
+
+    structural_stress = (bld_rank + road_rank + infra_rank) / 9.0
+    life_safety_risk = (people * (heat + 1)) * (1.0 + hazmat)
+    env_hazard_idx = (water / 5.0) * 0.4 + (aqi / 500.0) * 0.4 + (wind / 50.0) * 0.2
+
+    import pandas as pd
+    feat_values = [
+        temp, hum, wind, aqi, water, veg, people, heat, hazmat,
+        bld_rank, road_rank, infra_rank, structural_stress, life_safety_risk, env_hazard_idx
+    ]
+    x_df = pd.DataFrame([feat_values], columns=feature_names)
+    x_scaled = scaler.transform(x_df)
+
+    # Predictions and probabilities
+    sev_clf = models["disaster_severity_level"]
+    sev_pred = str(sev_clf.predict(x_scaled)[0])
+    sev_probs = {str(c): round(float(p) * 100, 1) for c, p in zip(sev_clf.classes_, sev_clf.predict_proba(x_scaled)[0])}
+
+    area_clf = models["affected_area_type"]
+    area_pred = str(area_clf.predict(x_scaled)[0])
+    area_probs = {str(c): round(float(p) * 100, 1) for c, p in zip(area_clf.classes_, area_clf.predict_proba(x_scaled)[0])}
+
+    act_clf = models["immediate_action_required"]
+    act_pred = str(act_clf.predict(x_scaled)[0])
+    act_probs = {str(c): float(p) for c, p in zip(act_clf.classes_, act_clf.predict_proba(x_scaled)[0])}
+    act_prob_yes = round(act_probs.get("Yes", 0.0) * 100, 1)
+
+    surv_clf = models["survivor_presence_likelihood"]
+    surv_pred = str(surv_clf.predict(x_scaled)[0])
+    surv_probs = {str(c): float(p) for c, p in zip(surv_clf.classes_, surv_clf.predict_proba(x_scaled)[0])}
+    surv_prob_high = round(surv_probs.get("High", 0.0) * 100, 1)
+
+    # Urgency score (0-100)
+    urgency = (
+        (30.0 if sev_pred == "High" else 15.0 if sev_pred == "Medium" else 5.0)
+        + (35.0 * (act_prob_yes / 100.0))
+        + (20.0 * (surv_prob_high / 100.0))
+        + (15.0 * structural_stress)
+    )
+    urgency = min(100.0, max(0.0, urgency))
+
+    # Actionable recommendations
+    recs = []
+    if act_pred == "Yes" or act_prob_yes > 40:
+        recs.append("Dispatch emergency rapid-response teams immediately to coordinates.")
+    if hazmat == 1:
+        recs.append("Hazardous materials detected: Equip first responders with Level B HAZMAT protective gear.")
+    if surv_pred == "High" or surv_prob_high > 40:
+        recs.append("High likelihood of survivors: prioritize acoustic sensors and thermal search-and-rescue.")
+    if area_pred == "Flooded":
+        recs.append("Inundation zone: mobilize inflatable rescue boats and amphibious extraction units.")
+    elif area_pred == "Fire-Damaged":
+        recs.append("Fire perimeter: deploy aerial suppression and inspect structural thermal containment.")
+    elif area_pred == "Collapsed Structure":
+        recs.append("Structural collapse: deploy canine SAR units and heavy shoring equipment.")
+    if not recs:
+        recs.append("Area status nominal: maintain scheduled reconnaissance drone surveillance.")
+
+    return {
+        "disaster_severity_level": sev_pred,
+        "severity_probabilities": sev_probs,
+        "affected_area_type": area_pred,
+        "area_type_probabilities": area_probs,
+        "immediate_action_required": act_pred,
+        "immediate_action_probability": act_prob_yes,
+        "survivor_presence_likelihood": surv_pred,
+        "survivor_probability": surv_prob_high,
+        "urgency_score": round(urgency, 1),
+        "recommendations": recs,
+        "input_telemetry": {
+            "temperature": temp,
+            "humidity": hum,
+            "wind_speed": wind,
+            "air_quality_index": aqi,
+            "water_level": water,
+            "vegetation_cover": veg,
+            "people_detected": people,
+            "heat_signatures": heat,
+            "hazardous_material_detected": hazmat,
+            "building_damage_level": bld_str,
+            "road_condition": road_str,
+            "infrastructure_status": infra_str,
+        },
+        "feature_importances": feature_importances.get("disaster_severity_level", {}),
+    }
+
