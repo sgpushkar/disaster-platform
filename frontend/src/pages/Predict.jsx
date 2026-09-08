@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Activity, CloudRain, Upload, Image, AlertTriangle, CheckCircle,
-  ShieldAlert, ChevronDown, ChevronUp, Loader2, Camera, BarChart3, Info,
+  Activity, CloudRain, AlertTriangle, CheckCircle,
+  ShieldAlert, ChevronDown, ChevronUp, Loader2, BarChart3, Info,
   Sliders, Shield, Sparkles, Database, RefreshCw, Thermometer, Droplets,
   Wind, Gauge, Compass, MapPin, AlertOctagon,
 } from 'lucide-react'
@@ -40,11 +40,6 @@ function Section({ title, icon: Icon, iconColor = 'text-red-500', children, defa
 }
 
 export default function Predict() {
-  const [imageFile, setImageFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
-  const [imageResult, setImageResult] = useState(null)
-  const [imageLoading, setImageLoading] = useState(false)
-
   const [rainfallValues, setRainfallValues] = useState(Array(14).fill(''))
   const [rainfallResult, setRainfallResult] = useState(null)
   const [rainfallLoading, setRainfallLoading] = useState(false)
@@ -71,8 +66,6 @@ export default function Predict() {
     road_condition: 'Obstructed',
     infrastructure_status: 'Damaged',
   })
-
-  const fileRef = useRef()
 
   const submitCombinedRisk = async () => {
     setRiskLoading(true)
@@ -165,31 +158,6 @@ export default function Predict() {
     submitCombinedRisk()
   }, [])
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setImageFile(file)
-    setImagePreview(URL.createObjectURL(file))
-    setImageResult(null)
-  }
-
-  const submitImage = async () => {
-    if (!imageFile) return
-    setImageLoading(true)
-    try {
-      const form = new FormData()
-      form.append('file', imageFile)
-      const { data } = await api.post('/predict/flood-image', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      setImageResult(data)
-    } catch (err) {
-      setImageResult({ error: err.response?.data?.detail || 'Image classification failed. Ensure the flood model is trained.' })
-    } finally {
-      setImageLoading(false)
-    }
-  }
-
   const submitRainfall = async () => {
     const values = rainfallValues.map(v => parseFloat(v) || 0)
     setRainfallLoading(true)
@@ -214,8 +182,7 @@ export default function Predict() {
           </span>
         </div>
         <p className="text-xs text-zinc-400">
-          Disaster risk evaluation trained on 61,368 historical environmental & structural attribute records.
-          Image evidence is <strong>optional</strong> supporting telemetry.
+          Comprehensive disaster risk assessment powered by the 61,368-record DisasterScope attribute model and meteorological forecasting.
         </p>
       </div>
 
@@ -758,86 +725,6 @@ export default function Predict() {
           {rainfallResult?.error && (
             <p className="text-xs text-red-300 p-3 bg-red-500/5 rounded border border-red-500/25">
               ⚠️ {rainfallResult.error}
-            </p>
-          )}
-        </div>
-      </Section>
-
-      {/* ── Section 3: Visual Check (Optional, secondary) ── */}
-      <Section title="Optional: Visual Flood Check (Image)" icon={Camera} iconColor="text-zinc-400" defaultOpen={false}>
-        <div className="pt-4 space-y-4">
-          <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-zinc-400 leading-relaxed flex items-start gap-2">
-            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-zinc-400" />
-            <span>
-              Image analysis is <strong>optional supporting evidence only</strong> (15% of risk score).
-              The system can provide a full risk assessment <strong>without any image</strong>.
-              Requires a trained flood image model to function.
-            </span>
-          </div>
-
-          {/* Upload area */}
-          <div
-            onClick={() => fileRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
-              ${imageFile ? 'border-purple-500/50 bg-purple-500/5' : 'border-slate-700 hover:border-slate-600 bg-slate-900/50'}`}
-          >
-            {imagePreview ? (
-              <img src={imagePreview} alt="Preview" className="max-h-44 mx-auto rounded-lg object-contain" />
-            ) : (
-              <div className="space-y-2">
-                <Upload className="h-8 w-8 text-slate-600 mx-auto" />
-                <p className="text-sm text-slate-400">Drop an aerial or ground-level flood photo</p>
-                <p className="text-xs text-slate-600">PNG, JPG, WEBP · max 10 MB</p>
-              </div>
-            )}
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-          </div>
-
-          {imageFile && (
-            <button
-              onClick={submitImage}
-              disabled={imageLoading}
-              className="btn-primary w-full py-2.5"
-            >
-              {imageLoading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Classifying...</>
-              ) : (
-                <><Image className="h-4 w-4" /> Classify Image</>
-              )}
-            </button>
-          )}
-
-          {imageResult && !imageResult.error && (
-            <div className="p-4 rounded-xl border border-slate-800 bg-slate-950/60 space-y-2">
-              <div className="flex items-center gap-2">
-                {imageResult.prediction === 'Flood' ? (
-                  <AlertTriangle className="h-5 w-5 text-orange-400" />
-                ) : (
-                  <CheckCircle className="h-5 w-5 text-emerald-400" />
-                )}
-                <span className={`text-sm font-bold font-mono ${
-                  imageResult.prediction === 'Flood' ? 'text-orange-400' : 'text-emerald-400'
-                }`}>
-                  {imageResult.prediction}
-                </span>
-                <span className="text-xs font-mono text-slate-400 ml-auto">
-                  {(imageResult.confidence * 100).toFixed(1)}% confidence
-                </span>
-              </div>
-              <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${imageResult.prediction === 'Flood' ? 'bg-orange-500' : 'bg-emerald-500'}`}
-                  style={{ width: `${(imageResult.confidence * 100).toFixed(0)}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-slate-600">
-                Image evidence accounts for ~15% of combined risk score when available.
-              </p>
-            </div>
-          )}
-          {imageResult?.error && (
-            <p className="text-xs text-red-300 p-3 bg-red-500/5 rounded border border-red-500/25">
-              ⚠️ {imageResult.error}
             </p>
           )}
         </div>
