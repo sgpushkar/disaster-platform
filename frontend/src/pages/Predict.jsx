@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Activity, CloudRain, Upload, Image, AlertTriangle, CheckCircle,
   ShieldAlert, ChevronDown, ChevronUp, Loader2, Camera, BarChart3, Info,
+  Crosshair, Radio, Users, Flame, Zap, Shield, Sparkles,
 } from 'lucide-react'
 import api from '../services/api'
 import RiskGauge from '../components/RiskGauge.jsx'
@@ -112,6 +113,90 @@ export default function Predict() {
       setRiskLoading(false)
     }
   }
+
+  // DisasterScope Recon State (Kaggle Dataset: 61,368 Records)
+  const [scopeInputs, setScopeInputs] = useState({
+    temperature: 28.0,
+    humidity: 75.0,
+    wind_speed: 18.0,
+    air_quality_index: 165.0,
+    water_level: 1.5,
+    vegetation_cover: 45.0,
+    people_detected: 2,
+    heat_signatures: 2,
+    hazardous_material_detected: 0,
+    building_damage_level: 'Moderate',
+    road_condition: 'Obstructed',
+    infrastructure_status: 'Damaged',
+  })
+  const [scopeResult, setScopeResult] = useState(null)
+  const [scopeLoading, setScopeLoading] = useState(false)
+  const [scopeError, setScopeError] = useState('')
+
+  const scopePresets = [
+    {
+      name: '🌊 Flood Surge',
+      data: {
+        temperature: 26.5, humidity: 90.0, wind_speed: 22.0, air_quality_index: 90.0,
+        water_level: 3.5, vegetation_cover: 25.0, people_detected: 4, heat_signatures: 1,
+        hazardous_material_detected: 0, building_damage_level: 'Moderate',
+        road_condition: 'Blocked', infrastructure_status: 'Damaged',
+      }
+    },
+    {
+      name: '🔥 Wildfire Incursion',
+      data: {
+        temperature: 39.0, humidity: 20.0, wind_speed: 38.0, air_quality_index: 410.0,
+        water_level: 0.1, vegetation_cover: 10.0, people_detected: 1, heat_signatures: 5,
+        hazardous_material_detected: 0, building_damage_level: 'Severe',
+        road_condition: 'Obstructed', infrastructure_status: 'Damaged',
+      }
+    },
+    {
+      name: '🏚️ Structural Collapse',
+      data: {
+        temperature: 25.0, humidity: 58.0, wind_speed: 10.0, air_quality_index: 260.0,
+        water_level: 0.3, vegetation_cover: 15.0, people_detected: 7, heat_signatures: 4,
+        hazardous_material_detected: 1, building_damage_level: 'Destroyed',
+        road_condition: 'Blocked', infrastructure_status: 'Severely Damaged',
+      }
+    },
+    {
+      name: '🛡️ Nominal Patrol',
+      data: {
+        temperature: 23.5, humidity: 55.0, wind_speed: 8.0, air_quality_index: 65.0,
+        water_level: 0.2, vegetation_cover: 75.0, people_detected: 0, heat_signatures: 0,
+        hazardous_material_detected: 0, building_damage_level: 'Undamaged',
+        road_condition: 'Intact', infrastructure_status: 'Intact',
+      }
+    }
+  ]
+
+  const submitScopeRecon = async () => {
+    setScopeLoading(true)
+    setScopeError('')
+    try {
+      const payload = {
+        ...scopeInputs,
+        temperature: parseFloat(scopeInputs.temperature) || 0,
+        humidity: parseFloat(scopeInputs.humidity) || 0,
+        wind_speed: parseFloat(scopeInputs.wind_speed) || 0,
+        air_quality_index: parseFloat(scopeInputs.air_quality_index) || 0,
+        water_level: parseFloat(scopeInputs.water_level) || 0,
+        vegetation_cover: parseFloat(scopeInputs.vegetation_cover) || 0,
+        people_detected: parseInt(scopeInputs.people_detected) || 0,
+        heat_signatures: parseInt(scopeInputs.heat_signatures) || 0,
+        hazardous_material_detected: parseInt(scopeInputs.hazardous_material_detected) || 0,
+      }
+      const { data } = await api.post('/predict/disaster-scope', payload)
+      setScopeResult(data)
+    } catch (err) {
+      setScopeError(err.response?.data?.detail || 'Reconnaissance analysis failed. Ensure DisasterScope model is trained.')
+    } finally {
+      setScopeLoading(false)
+    }
+  }
+
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
@@ -233,7 +318,316 @@ export default function Predict() {
         </div>
       </Section>
 
-      {/* ── Section 2: Rainfall Forecast (LSTM) ── */}
+      {/* ── Section 2: Drone & Aerial Recon (DisasterScope AI) ── */}
+      <Section title="Drone Recon & Multi-Hazard Assessment" icon={Crosshair} iconColor="text-amber-400" defaultOpen={true}>
+        <div className="pt-4 space-y-4">
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 leading-relaxed flex items-start gap-2">
+            <Radio className="h-4 w-4 shrink-0 mt-0.5 text-amber-400 animate-pulse" />
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="font-bold text-amber-300">DisasterScope Drone Telemetry Engine</span>
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                  KAGGLE 61K DATASET
+                </span>
+              </div>
+              <p className="text-zinc-400 text-[11px]">
+                Analyzes drone sensor telemetry, structural destruction levels, and thermal signatures to classify hazard area type, immediate action urgency, and survivor presence.
+              </p>
+            </div>
+          </div>
+
+          {/* Preset scenarios */}
+          <div>
+            <label className="text-[11px] font-mono uppercase text-zinc-400 block mb-1.5">
+              Mission Simulation Presets
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {scopePresets.map((preset) => (
+                <button
+                  key={preset.name}
+                  type="button"
+                  onClick={() => {
+                    setScopeInputs(preset.data)
+                    setScopeResult(null)
+                  }}
+                  className="p-2 rounded-lg border border-slate-800 bg-slate-900/60 hover:border-amber-500/50 hover:bg-slate-800/80 transition-all text-left group"
+                >
+                  <span className="text-xs font-semibold text-zinc-200 group-hover:text-amber-300 block">
+                    {preset.name}
+                  </span>
+                  <span className="text-[10px] text-zinc-500">Apply telemetry</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Telemetry Input Form */}
+          <div className="space-y-3 pt-2">
+            <p className="text-[11px] font-mono uppercase text-zinc-400">Environmental Sensors</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Temp (°C)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={scopeInputs.temperature}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, temperature: e.target.value })}
+                  className="input-control text-xs py-1.5 px-2"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Humidity (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={scopeInputs.humidity}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, humidity: e.target.value })}
+                  className="input-control text-xs py-1.5 px-2"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Wind Speed (km/h)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={scopeInputs.wind_speed}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, wind_speed: e.target.value })}
+                  className="input-control text-xs py-1.5 px-2"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Air Quality (AQI)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="500"
+                  value={scopeInputs.air_quality_index}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, air_quality_index: e.target.value })}
+                  className="input-control text-xs py-1.5 px-2"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Water Depth (m)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={scopeInputs.water_level}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, water_level: e.target.value })}
+                  className="input-control text-xs py-1.5 px-2"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Vegetation (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={scopeInputs.vegetation_cover}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, vegetation_cover: e.target.value })}
+                  className="input-control text-xs py-1.5 px-2"
+                />
+              </div>
+            </div>
+
+            <p className="text-[11px] font-mono uppercase text-zinc-400 pt-2">Reconnaissance & Structural Status</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 block mb-1">People Detected</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={scopeInputs.people_detected}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, people_detected: e.target.value })}
+                  className="input-control text-xs py-1.5 px-2"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Heat Signatures</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={scopeInputs.heat_signatures}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, heat_signatures: e.target.value })}
+                  className="input-control text-xs py-1.5 px-2"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Building Damage</label>
+                <select
+                  value={scopeInputs.building_damage_level}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, building_damage_level: e.target.value })}
+                  className="input-control text-xs py-1.5 px-2"
+                >
+                  <option value="Undamaged">Undamaged</option>
+                  <option value="Minor">Minor</option>
+                  <option value="Moderate">Moderate</option>
+                  <option value="Severe">Severe</option>
+                  <option value="Destroyed">Destroyed</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Road Condition</label>
+                <select
+                  value={scopeInputs.road_condition}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, road_condition: e.target.value })}
+                  className="input-control text-xs py-1.5 px-2"
+                >
+                  <option value="Intact">Intact</option>
+                  <option value="Obstructed">Obstructed</option>
+                  <option value="Damaged">Damaged</option>
+                  <option value="Blocked">Blocked</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 block mb-1">Infrastructure Status</label>
+                <select
+                  value={scopeInputs.infrastructure_status}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, infrastructure_status: e.target.value })}
+                  className="input-control text-xs py-1.5 px-2"
+                >
+                  <option value="Intact">Intact</option>
+                  <option value="Damaged">Damaged</option>
+                  <option value="Severely Damaged">Severely Damaged</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2 pt-5">
+                <input
+                  type="checkbox"
+                  id="hazmat-check"
+                  checked={Boolean(scopeInputs.hazardous_material_detected)}
+                  onChange={(e) => setScopeInputs({ ...scopeInputs, hazardous_material_detected: e.target.checked ? 1 : 0 })}
+                  className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-400"
+                />
+                <label htmlFor="hazmat-check" className="text-xs text-amber-300 font-medium cursor-pointer">
+                  HAZMAT Detected
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={submitScopeRecon}
+            disabled={scopeLoading}
+            className="w-full py-2.5 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-900/30"
+          >
+            {scopeLoading ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Evaluating Drone Telemetry...</>
+            ) : (
+              <><Crosshair className="h-4 w-4" /> Run DisasterScope Assessment</>
+            )}
+          </button>
+
+          {scopeError && (
+            <p className="text-xs text-red-400 p-2.5 rounded bg-red-500/10 border border-red-500/20">
+              ⚠️ {scopeError}
+            </p>
+          )}
+
+          {/* Results Display */}
+          {scopeResult && (
+            <div className="space-y-4 pt-3 border-t border-slate-800 animate-fadeIn">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {/* Severity */}
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-950/70 text-center">
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase block mb-1">Disaster Severity</span>
+                  <span className={`text-sm font-bold font-mono px-2 py-0.5 rounded inline-block ${
+                    scopeResult.disaster_severity_level === 'High' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                    scopeResult.disaster_severity_level === 'Medium' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                    'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  }`}>
+                    {scopeResult.disaster_severity_level.toUpperCase()}
+                  </span>
+                  <p className="text-[9px] font-mono text-zinc-500 mt-1">
+                    {scopeResult.severity_probabilities?.[scopeResult.disaster_severity_level] || 0}% prob
+                  </p>
+                </div>
+
+                {/* Area Type */}
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-950/70 text-center">
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase block mb-1">Hazard Area Type</span>
+                  <span className="text-xs font-bold font-mono text-cyan-300 block truncate">
+                    {scopeResult.affected_area_type}
+                  </span>
+                  <p className="text-[9px] font-mono text-zinc-500 mt-1">
+                    {scopeResult.area_type_probabilities?.[scopeResult.affected_area_type] || 0}% match
+                  </p>
+                </div>
+
+                {/* Immediate Action */}
+                <div className={`p-3 rounded-lg border text-center ${
+                  scopeResult.immediate_action_required === 'Yes'
+                    ? 'border-red-500/40 bg-red-950/30'
+                    : 'border-slate-800 bg-slate-950/70'
+                }`}>
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase block mb-1">Immediate Action</span>
+                  <span className={`text-sm font-bold font-mono ${
+                    scopeResult.immediate_action_required === 'Yes' ? 'text-red-400' : 'text-zinc-300'
+                  }`}>
+                    {scopeResult.immediate_action_required === 'Yes' ? '🚨 REQUIRED' : 'STANDBY'}
+                  </span>
+                  <p className="text-[9px] font-mono text-zinc-500 mt-1">
+                    {scopeResult.immediate_action_probability}% urgency
+                  </p>
+                </div>
+
+                {/* Survivor Likelihood */}
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-950/70 text-center">
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase block mb-1">Survivor Likelihood</span>
+                  <span className={`text-sm font-bold font-mono ${
+                    scopeResult.survivor_presence_likelihood === 'High' ? 'text-purple-400' : 'text-zinc-400'
+                  }`}>
+                    {scopeResult.survivor_presence_likelihood.toUpperCase()}
+                  </span>
+                  <p className="text-[9px] font-mono text-zinc-500 mt-1">
+                    {scopeResult.survivor_probability}% conf
+                  </p>
+                </div>
+              </div>
+
+              {/* Urgency Progress Bar */}
+              <div className="p-3 rounded-lg border border-slate-800 bg-slate-900/40 space-y-1.5">
+                <div className="flex justify-between items-center text-[11px] font-mono">
+                  <span className="text-zinc-300">Composite Mission Urgency Score</span>
+                  <span className="font-bold text-amber-400">{scopeResult.urgency_score}/100</span>
+                </div>
+                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${
+                      scopeResult.urgency_score > 60 ? 'bg-gradient-to-r from-orange-500 to-red-500' :
+                      scopeResult.urgency_score > 30 ? 'bg-gradient-to-r from-yellow-500 to-amber-500' :
+                      'bg-emerald-500'
+                    }`}
+                    style={{ width: `${Math.min(100, scopeResult.urgency_score)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Recommendations */}
+              {scopeResult.recommendations?.length > 0 && (
+                <div className="p-3 rounded-lg border border-slate-800 bg-slate-950/80 space-y-1.5">
+                  <p className="text-[11px] font-mono uppercase text-amber-400 flex items-center gap-1.5 font-semibold">
+                    <Shield className="h-3.5 w-3.5" />
+                    Tactical Directives & Direct Orders
+                  </p>
+                  <ul className="space-y-1 text-xs text-zinc-300">
+                    {scopeResult.recommendations.map((rec, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="text-amber-500">•</span>
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </Section>
+
+      {/* ── Section 3: Rainfall Forecast (LSTM) ── */}
       <Section title="Rainfall Forecast (LSTM)" icon={CloudRain} iconColor="text-cyan-400" defaultOpen={false}>
         <div className="pt-4 space-y-4">
           <p className="text-xs text-slate-400">
