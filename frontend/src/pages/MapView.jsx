@@ -308,66 +308,70 @@ export default function MapView() {
       {/* Map Container */}
       <div className="card-panel p-2 relative overflow-hidden">
         {/* Unified Map Controls Toolbar: Recenter + Style Switcher */}
-        <div className="absolute top-4 right-4 z-[1000] flex flex-wrap items-center gap-2">
+        <div className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 z-[1000] flex items-center gap-1.5 sm:gap-2 max-w-[calc(100%-60px)]">
           {userLoc && (
             <button
               onClick={() => setFlyTarget({ lat: userLoc.lat, lon: userLoc.lon, zoom: 15 })}
-              className="bg-slate-900/90 border border-slate-700 hover:border-blue-500 text-blue-400 hover:text-white px-2.5 py-1.5 rounded-xl text-xs font-mono font-semibold flex items-center gap-1.5 shadow-xl backdrop-blur-md transition-all active:scale-95"
+              className="h-8 sm:h-auto px-2 sm:px-2.5 py-1.5 rounded-xl bg-slate-900/95 border border-slate-700 hover:border-blue-500 text-blue-400 hover:text-white text-xs font-mono font-semibold flex items-center justify-center gap-1.5 shadow-xl backdrop-blur-md transition-all active:scale-95 shrink-0"
               title="Recenter map on your exact GPS coordinates"
             >
-              <Navigation className="h-3.5 w-3.5 text-blue-500" />
-              <span>Recenter</span>
+              <Navigation className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+              <span className="hidden sm:inline">Recenter</span>
             </button>
           )}
 
-          <div className="flex items-center bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl gap-1">
+          <div className="flex items-center bg-slate-950/95 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl gap-0.5 sm:gap-1 shrink-0">
             <button
               type="button"
               onClick={() => setMapStyle('streets')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+              className={`px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1 ${
                 mapStyle === 'streets'
                   ? 'bg-red-600 text-white shadow-sm font-bold'
                   : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
               }`}
               title="Detailed OpenStreetMap with full place names, localities, landmarks, and roads"
             >
-              🗺️ Places &amp; Streets
+              <span>🗺️</span>
+              <span className="hidden md:inline">Streets</span>
             </button>
             <button
               type="button"
               onClick={() => setMapStyle('dark')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+              className={`px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1 ${
                 mapStyle === 'dark'
                   ? 'bg-red-600 text-white shadow-sm font-bold'
                   : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
               }`}
               title="Tactical dark mode with places, roads, and zero watermarks"
             >
-              🌙 Dark
+              <span>🌙</span>
+              <span className="hidden md:inline">Dark</span>
             </button>
             <button
               type="button"
               onClick={() => setMapStyle('topo')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+              className={`px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1 ${
                 mapStyle === 'topo'
                   ? 'bg-red-600 text-white shadow-sm font-bold'
                   : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
               }`}
               title="Topographic terrain with elevation contours, landmarks, and roads"
             >
-              ⛰️ Topo
+              <span>⛰️</span>
+              <span className="hidden md:inline">Topo</span>
             </button>
             <button
               type="button"
               onClick={() => setMapStyle('satellite')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition-all ${
+              className={`px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1 ${
                 mapStyle === 'satellite'
                   ? 'bg-red-600 text-white shadow-sm font-bold'
                   : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
               }`}
               title="Satellite photography with places and road boundaries"
             >
-              🛰️ Satellite
+              <span>🛰️</span>
+              <span className="hidden md:inline">Satellite</span>
             </button>
           </div>
         </div>

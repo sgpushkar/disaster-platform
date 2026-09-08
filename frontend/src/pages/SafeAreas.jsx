@@ -308,42 +308,45 @@ export default function SafeAreas() {
         <div className="lg:col-span-3">
           <div className="card-panel p-2 sticky top-20 relative overflow-hidden">
             {/* Map Layer Style Switcher */}
-            <div className="absolute top-4 right-4 z-[1000] flex items-center bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl gap-1">
+            <div className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 z-[1000] flex items-center bg-slate-950/90 backdrop-blur-md p-1 rounded-xl border border-slate-800 shadow-xl gap-0.5 sm:gap-1">
               <button
                 type="button"
                 onClick={() => setMapStyle('streets')}
-                className={`px-2 py-1 rounded-lg text-[11px] font-mono font-medium transition-all ${
+                className={`px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1 ${
                   mapStyle === 'streets'
                     ? 'bg-red-600 text-white shadow-sm font-bold'
                     : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
                 }`}
                 title="Detailed street map"
               >
-                🗺️ Streets
+                <span>🗺️</span>
+                <span className="hidden sm:inline">Streets</span>
               </button>
               <button
                 type="button"
                 onClick={() => setMapStyle('topo')}
-                className={`px-2 py-1 rounded-lg text-[11px] font-mono font-medium transition-all ${
+                className={`px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1 ${
                   mapStyle === 'topo'
                     ? 'bg-red-600 text-white shadow-sm font-bold'
                     : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
                 }`}
                 title="Topographic terrain"
               >
-                ⛰️ Topo
+                <span>⛰️</span>
+                <span className="hidden sm:inline">Topo</span>
               </button>
               <button
                 type="button"
                 onClick={() => setMapStyle('satellite')}
-                className={`px-2 py-1 rounded-lg text-[11px] font-mono font-medium transition-all ${
+                className={`px-2 py-1 sm:px-2.5 sm:py-1 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1 ${
                   mapStyle === 'satellite'
                     ? 'bg-red-600 text-white shadow-sm font-bold'
                     : 'text-zinc-400 hover:text-white hover:bg-slate-800/60'
                 }`}
                 title="Satellite photography"
               >
-                🛰️ Satellite
+                <span>🛰️</span>
+                <span className="hidden sm:inline">Satellite</span>
               </button>
             </div>
 
