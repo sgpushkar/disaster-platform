@@ -47,17 +47,17 @@ An enterprise-grade, full-stack disaster intelligence and emergency response pla
                                     +--------------------+--------------------+
                                                          |  HTTP / REST (JWT Auth)
                                                          v
-+-------------------------------------------------------------------------------------------------------+
-|                                         FastAPI Application Layer                                     |
-|                                                                                                       |
-|  [ /predict/disaster-risk ]   [ /upload-image ]   [ /predict/rainfall ]   [ /safety/nearby ]          |
-+---------------------+-------------------+------------------+---------------------+--------------------+
-                      |                   |                  |                     |
-                      v                   v                  v                     v
-            +-------------------+ +---------------+ +-----------------+ +-----------------------+
-            | Historical Model  | |  Flood Model  | | Rainfall Fore-  | |  Safe Area Service    |
-            | (RF + GBDT)       | |  (Ensemble)   | | caster (Regr.)  | |  (2,036 OSM Entities) |
-            +-------------------+ +---------------+ +-----------------+ +-----------------------+
++-------------------------------------------------------------------------------------------------------------------------+
+|                                                   FastAPI Application Layer                                             |
+|                                                                                                                         |
+| [ /predict/disaster-risk ]  [ /predict/disaster-scope ]  [ /upload-image ]  [ /predict/rainfall ]  [ /safety/nearby ]   |
++---------------------+-------------------+-------------------+------------------+---------------------+------------------+
+                      |                   |                   |                  |                     |
+                      v                   v                   v                  v                     v
+            +-------------------+ +-------------------+ +---------------+ +-----------------+ +-----------------------+
+            | Historical Model  | | DisasterScope Recon| |  Flood Model  | | Rainfall Fore-  | |  Safe Area Service    |
+            | (RF + GBDT)       | | (61k Drone Ensemble) | (Ensemble)   | | caster (Regr.)  | |  (2,036 OSM Entities) |
+            +-------------------+ +-------------------+ +---------------+ +-----------------+ +-----------------------+
                       |                   |                  |                     |
                       +-------------------+------------------+                     |
                                           |                                        |
@@ -189,7 +189,7 @@ Frontend application will be live at: `http://localhost:5173`
 
 ## Machine Learning Models & Training
 
-The platform incorporates three independently trained, specialized ML systems:
+The platform incorporates four independently trained, specialized ML systems:
 
 ```bash
 # Train all models with 1 command:
@@ -197,6 +197,7 @@ npm run train:all
 
 # Or train individually:
 python ml/train_disaster_risk_model.py
+python ml/train_disasterscope_model.py
 python ml/train_rainfall_model.py
 python ml/train_flood_model.py
 ```
@@ -215,12 +216,23 @@ python ml/train_flood_model.py
   - **Flood Binary Detection ROC-AUC**: **`0.9936`**
   - **Continuous Risk Score Regressor**: **$R^2 = 0.9926$**, **$\text{MAE} = 1.85$ points**
 
-### 2. Time-Series Rainfall Regressor
+### 2. DisasterScope Drone Reconnaissance Model
+- **Dataset**: [`datasets/disasterscope/disasterscope.csv`](datasets/disasterscope/disasterscope.csv) (**61,368 records** from Kaggle `datasetengineer/disasterscope-dataset`).
+- **Telemetry Ingestion**: Download automatically via `kagglehub.dataset_download("datasetengineer/disasterscope-dataset")` or `python ml/download_disasterscope.py`.
+- **Sensors & Features**: Ambient temperature, humidity, wind velocity, AQI, water inundation depth, vegetation density, drone-detected victims, infrared heat signatures, HAZMAT detection, building damage (Undamaged to Destroyed), road status (Intact to Blocked), and infrastructure integrity.
+- **Multi-Target Outputs**:
+  - **Disaster Severity Level**: Low, Medium, High + class probability distribution
+  - **Affected Hazard Area Type**: Flooded, Fire-Damaged, Collapsed Structure, Unblocked
+  - **Immediate Action Required**: Yes / No + urgency percentage
+  - **Survivor Presence Likelihood**: High / Low confidence
+  - **Tactical Directives**: Automated emergency response directives (amphibious boats, canine SAR, Level B HAZMAT gear).
+
+### 3. Time-Series Rainfall Regressor
 - **Architecture**: Multi-Output Neural Network + Scikit-Learn Regressor with `MinMaxScaler`.
 - **Input**: 7-day rolling window of daily precipitation.
 - **Output**: Next 24 hours (+1 day) and cumulative next 3 days forecast in mm.
 
-### 3. Visual Flood Detection Model
+### 4. Visual Flood Detection Model
 - **Architecture**: Deep spatial feature extractor (RGB color moments, HSV water spectrum, edge gradient magnitude) paired with an ensemble classifier.
 - **Input**: User-uploaded photo (`.jpg`, `.png`, `.webp`).
 - **Output**: Binary verdict (`Flood` / `No Flood`) and confidence percentage.
@@ -235,6 +247,7 @@ python ml/train_flood_model.py
 | `POST` | `/login` | Public | Authenticate user & receive JWT Bearer token |
 | `GET` | `/dashboard` | Protected | Aggregated hazard status, weather telemetry, and nearby alerts |
 | `POST` | `/predict/disaster-risk` | Protected | **Predict risk directly from historical environmental attributes** |
+| `POST` | `/predict/disaster-scope` | Protected | **Multi-target drone reconnaissance assessment (Severity, Area, Action, Survivors)** |
 | `POST` | `/upload-image` | Protected | Submit photo for visual flood detection |
 | `POST` | `/predict/rainfall` | Protected | 4-day precipitation forecast from historical window |
 | `POST` | `/predict/risk` | Protected | Multi-signal fused risk score combining image + forecast + weather |
@@ -249,7 +262,7 @@ python ml/train_flood_model.py
 
 ## Testing
 
-The platform includes a test suite covering authentication, API endpoints, the risk fusion engine, safe area ranking, and machine learning inference pipelines:
+The platform includes an extensive automated Pytest suite (73 unit and integration tests) covering authentication, API endpoints, the risk fusion engine, safe area ranking, and machine learning inference pipelines:
 
 ```bash
 # Run tests using the backend virtual environment:

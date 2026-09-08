@@ -53,21 +53,44 @@ date,location,rainfall_24h_mm,rainfall_72h_mm,humidity_pct,temperature_c,wind_sp
   - `drainage_capacity_index`: Urban infrastructure absorption factor (0.1 - 1.0)
   - Target labels: `flood_occurred` (0/1), `risk_level` (Low/Moderate/High/Critical), and `risk_score` (0-100 continuous)
 
+## 4. DisasterScope Drone Reconnaissance Dataset (`datasets/disasterscope/disasterscope.csv`)
+
+Kaggle dataset (`datasetengineer/disasterscope-dataset`) with **61,368 records** of drone reconnaissance and ground hazard telemetry:
+
+```csv
+timestamp,temperature,humidity,wind_speed,air_quality_index,water_level,building_damage_level,road_condition,infrastructure_status,vegetation_cover,people_detected,heat_signatures,hazardous_material_detected,disaster_severity_level,affected_area_type,immediate_action_required,survivor_presence_likelihood
+2018-01-01 00:00:00,28.5,75.0,15.2,165.0,1.2,Moderate,Obstructed,Damaged,45.0,3,2,0,Medium,Flooded,Yes,High
+...
+```
+
+- Download automatically via `kagglehub`:
+  ```bash
+  python ml/download_disasterscope.py
+  ```
+- Target labels predicted by the multi-target ensemble:
+  1. `disaster_severity_level`: Low, Medium, High
+  2. `affected_area_type`: Unblocked, Flooded, Fire-Damaged, Collapsed Structure
+  3. `immediate_action_required`: Yes / No
+  4. `survivor_presence_likelihood`: Low / High
+
 ## After placing data / Training Models
 
 ```bash
 cd disaster-platform
 pip install -r backend/requirements.txt
 
-# Train models
+# Train all models
 python ml/train_flood_model.py
 python ml/train_rainfall_model.py
 python ml/train_disaster_risk_model.py
+python ml/train_disasterscope_model.py
 ```
 
 This writes:
 - `flood_model.joblib` / `flood_model.keras`
 - `lstm_model.joblib` / `lstm_model.keras` + `rainfall_scaler.pkl`
 - `disaster_risk_model.joblib`
+- `disasterscope_model.joblib`
 
 into `ml/models/` and syncs them to `backend/models/`. The backend automatically picks these up for inference.
+
