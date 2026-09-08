@@ -39,10 +39,16 @@ export default function LocationSelector({ onLocationChange }) {
     setStatus('requesting')
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        const lat = pos.coords.latitude
+        const lon = pos.coords.longitude
+        const accuracy = Math.round(pos.coords.accuracy || 20)
+        const coordsText = `${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E`
         const loc = {
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-          name: 'Current Location',
+          lat,
+          lon,
+          accuracy,
+          name: `GPS: ${coordsText}`,
+          coordsText,
           source: 'gps',
         }
         saveLocation(loc)
@@ -51,7 +57,7 @@ export default function LocationSelector({ onLocationChange }) {
       () => {
         setStatus('denied')
       },
-      { timeout: 8000, maximumAge: 300000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     )
   }
 
@@ -59,6 +65,7 @@ export default function LocationSelector({ onLocationChange }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(loc))
     setLocation(loc)
     onLocationChange?.(loc)
+    window.dispatchEvent(new CustomEvent('locationChanged', { detail: loc }))
   }
 
   const selectCity = (city) => {
@@ -74,7 +81,7 @@ export default function LocationSelector({ onLocationChange }) {
         {status === 'requesting' && (
           <span className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
             <Loader2 className="h-3.5 w-3.5 animate-spin text-red-500" />
-            Detecting...
+            Acquiring GPS...
           </span>
         )}
 
@@ -85,7 +92,7 @@ export default function LocationSelector({ onLocationChange }) {
               bg-slate-850 border border-slate-700 text-zinc-200 hover:border-red-500/50 transition-all shadow-sm"
           >
             <Navigation className="h-3 w-3 text-red-500" />
-            <span className="max-w-[130px] truncate font-semibold text-white">{location.name}</span>
+            <span className="max-w-[150px] truncate font-semibold text-white">{location.name}</span>
             <span className="text-zinc-500 ml-0.5">▾</span>
           </button>
         )}
@@ -116,8 +123,24 @@ export default function LocationSelector({ onLocationChange }) {
 
       {/* Sector picker dropdown */}
       {showCityPicker && (
-        <div className="absolute top-full mt-2 left-0 z-50 bg-[#111114] border border-[#27272a] rounded-xl shadow-2xl p-1.5 w-52 backdrop-blur-xl">
-          <p className="text-[10px] font-mono text-zinc-500 uppercase px-2.5 py-1.5 tracking-wider">Sector Telemetry</p>
+        <div className="absolute top-full mt-2 left-0 z-50 bg-[#111114] border border-[#27272a] rounded-xl shadow-2xl p-1.5 w-56 backdrop-blur-xl">
+          <div className="flex items-center justify-between px-2.5 py-1.5">
+            <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Sector Telemetry</p>
+            {location?.source === 'gps' && (
+              <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                LIVE GPS
+              </span>
+            )}
+          </div>
+          
+          <button
+            onClick={() => { requestGeolocation(); setShowCityPicker(false) }}
+            className="w-full text-left px-2.5 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors font-mono flex items-center gap-2 mb-1 border-b border-slate-800"
+          >
+            <Navigation className="h-3.5 w-3.5 shrink-0 text-red-500 animate-pulse" />
+            <span className="font-semibold">Acquire Exact GPS Location</span>
+          </button>
+
           <div className="space-y-0.5">
             {DEFAULT_CITIES.map((city) => (
               <button
@@ -136,15 +159,6 @@ export default function LocationSelector({ onLocationChange }) {
               </button>
             ))}
           </div>
-          {status === 'denied' && (
-            <button
-              onClick={() => { requestGeolocation(); setShowCityPicker(false) }}
-              className="w-full text-left px-2.5 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors font-mono mt-1 border-t border-slate-800 pt-2"
-            >
-              <Navigation className="h-3 w-3 inline mr-1.5" />
-              Acquire GPS Location
-            </button>
-          )}
         </div>
       )}
     </div>

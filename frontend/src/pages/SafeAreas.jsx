@@ -69,29 +69,46 @@ export default function SafeAreas() {
   }, [])
 
   useEffect(() => {
+    const applyLocation = (loc) => {
+      setUserLoc(loc)
+      fetchSafeAreas(loc.lat, loc.lon)
+    }
+
     const saved = localStorage.getItem('disaster_intel_location')
     if (saved) {
       try {
         const loc = JSON.parse(saved)
-        setUserLoc(loc)
-        fetchSafeAreas(loc.lat, loc.lon)
-        return
+        applyLocation(loc)
       } catch (_) {}
+    } else {
+      navigator.geolocation?.getCurrentPosition(
+        pos => {
+          const loc = {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            accuracy: Math.round(pos.coords.accuracy || 20),
+            name: `Exact Location (${pos.coords.latitude.toFixed(3)}°N, ${pos.coords.longitude.toFixed(3)}°E)`,
+            source: 'gps',
+          }
+          applyLocation(loc)
+        },
+        () => {
+          // Default to Mumbai core where 2,036 emergency points are seeded
+          const loc = { lat: 19.0760, lon: 72.8777, name: 'Mumbai Metropolitan Region', source: 'default' }
+          applyLocation(loc)
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+      )
     }
-    navigator.geolocation?.getCurrentPosition(
-      pos => {
-        const loc = { lat: pos.coords.latitude, lon: pos.coords.longitude, name: 'Your Location' }
-        setUserLoc(loc)
-        fetchSafeAreas(loc.lat, loc.lon)
-      },
-      () => {
-        // Default to Pune
-        const loc = { lat: 18.5204, lon: 73.8567, name: 'Pune (Default)' }
-        setUserLoc(loc)
-        fetchSafeAreas(loc.lat, loc.lon)
+
+    const handleLocationChange = (e) => {
+      if (e.detail?.lat != null && e.detail?.lon != null) {
+        applyLocation(e.detail)
       }
-    )
-  }, [])
+    }
+    window.addEventListener('locationChanged', handleLocationChange)
+    return () => window.removeEventListener('locationChanged', handleLocationChange)
+  }, [fetchSafeAreas])
 
   const fetchRoute = async (result) => {
     if (!userLoc) return

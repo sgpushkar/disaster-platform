@@ -9,7 +9,8 @@ import {
 import {
   Thermometer, Waves, CloudRain, ShieldAlert, RefreshCw,
   ArrowRight, AlertTriangle, Activity, Wind, Droplets,
-  MapPin, TrendingUp, Bell, Zap, Gauge, Smartphone, Download
+  MapPin, TrendingUp, Bell, Zap, Gauge, Smartphone, Download,
+  Compass, Footprints, ExternalLink
 } from 'lucide-react'
 import api from '../services/api'
 import StatCard from '../components/StatCard.jsx'
@@ -31,6 +32,7 @@ export default function Dashboard() {
   const [riskData, setRiskData] = useState(null)
   const [riskHistory, setRiskHistory] = useState([])
   const [forecast, setForecast] = useState([])
+  const [nearbyFacilities, setNearbyFacilities] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -77,7 +79,11 @@ export default function Dashboard() {
         await api.post('/weather/refresh', null, { params }).catch(() => {})
       }
 
-      const [dashRes, riskRes, histRes, forecastRes, weatherRes] = await Promise.all([
+      const nearbyParams = activeLoc?.lat != null
+        ? { lat: activeLoc.lat, lon: activeLoc.lon, radius_km: 15, limit: 3 }
+        : { lat: 19.0760, lon: 72.8777, radius_km: 15, limit: 3 }
+
+      const [dashRes, riskRes, histRes, forecastRes, weatherRes, nearbyRes] = await Promise.all([
         api.get('/dashboard', { params }).catch((err) => {
           console.warn('Dashboard fetch warning:', err)
           return { data: null }
@@ -89,6 +95,7 @@ export default function Dashboard() {
         api.get('/risk/history', { params: { days: 14 } }).catch(() => ({ data: [] })),
         api.get('/weather/forecast', { params }).catch(() => ({ data: [] })),
         api.get('/weather', { params }).catch(() => ({ data: null })),
+        api.get('/safety/nearby', { params: nearbyParams }).catch(() => ({ data: { results: [] } })),
       ])
 
       const currentWeatherData = dashRes?.data?.current_weather || weatherRes?.data || null
@@ -99,6 +106,7 @@ export default function Dashboard() {
       if (riskRes?.data) setRiskData(riskRes.data)
       setRiskHistory(histRes?.data || [])
       setForecast(forecastRes?.data || [])
+      setNearbyFacilities(nearbyRes?.data?.results || [])
 
       if (!currentWeatherData && !riskRes?.data) {
         setError('Weather & risk telemetry updating. Click Refresh to acquire data.')
@@ -117,11 +125,20 @@ export default function Dashboard() {
   const handleLocationChange = useCallback((loc) => {
     setLocation(loc)
     loadData(loc)
-  }, [])
+  }, [loadData])
 
   useEffect(() => {
     loadData()
-  }, [])
+
+    const handleWindowLocation = (e) => {
+      if (e.detail) {
+        setLocation(e.detail)
+        loadData(e.detail)
+      }
+    }
+    window.addEventListener('locationChanged', handleWindowLocation)
+    return () => window.removeEventListener('locationChanged', handleWindowLocation)
+  }, [loadData])
 
   const historyForChart = riskHistory.length > 0 ? riskHistory : []
 
@@ -398,6 +415,90 @@ export default function Dashboard() {
           </div>
         </motion.div>
       </div>
+
+      {/* ── Nearby Emergency Facilities & Safe Points ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.18 }}
+        className="card-panel p-5 space-y-4"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
+          <div>
+            <h2 className="text-xs font-bold font-mono uppercase text-zinc-200 flex items-center gap-2">
+              <Compass className="h-4 w-4 text-blue-500" />
+              Nearby Critical Emergency Infrastructure
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                PROXIMITY RADAR
+              </span>
+            </h2>
+            <p className="text-[11px] text-zinc-400 mt-0.5 font-mono">
+              Live distance & safe havens closest to {location?.name || 'your detected location'}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link to="/map" className="text-xs text-blue-400 hover:text-blue-300 font-mono flex items-center gap-1">
+              Interactive Map <ArrowRight className="h-3 w-3" />
+            </Link>
+            <Link to="/safe-areas" className="text-xs text-emerald-400 hover:text-emerald-300 font-mono flex items-center gap-1">
+              Evacuation Routes <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          {nearbyFacilities.length > 0 ? (
+            nearbyFacilities.map((r, idx) => {
+              const loc = r.location
+              const distText = r.distance_km < 1.0 ? `${Math.round(r.distance_km * 1000)} m` : `${r.distance_km.toFixed(1)} km`
+              return (
+                <div
+                  key={loc?.id || idx}
+                  className="p-3.5 rounded-lg bg-[#0e0e11] border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between group"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] font-mono uppercase font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">
+                        {loc?.type?.replace('_', ' ') || 'Facility'}
+                      </span>
+                      <span className="font-mono text-xs font-bold text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                        📍 {distText}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors line-clamp-1">
+                        {loc?.name}
+                      </h3>
+                      {r.reason && (
+                        <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                          {r.reason}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-800/80 text-[11px] font-mono">
+                    <span className="text-emerald-400 flex items-center gap-1">
+                      <Footprints className="h-3.5 w-3.5" />
+                      ~{r.estimated_minutes}m walk
+                    </span>
+                    <Link
+                      to="/safe-areas"
+                      className="text-zinc-300 hover:text-white flex items-center gap-1 font-semibold"
+                    >
+                      Safe Route <ExternalLink className="h-3 w-3 text-blue-400" />
+                    </Link>
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="col-span-3 text-center py-6 text-xs text-zinc-500 font-mono border border-dashed border-slate-800/80 rounded-lg">
+              Acquiring closest emergency facilities from your sector...
+            </div>
+          )}
+        </div>
+      </motion.div>
 
       {/* ── Rainfall Forecast ── */}
       <motion.div
