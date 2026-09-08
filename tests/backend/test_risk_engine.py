@@ -107,7 +107,7 @@ def test_risk_level_critical():
 # -------------------------------------------------------
 
 def test_risk_no_signals():
-    score, level, trend, confidence, factors, rec = compute_risk_score()
+    score, level, trend, confidence, factors, rec, *rest = compute_risk_score()
     assert score == 0.0
     assert level == "Low"
     assert confidence == 0.0
@@ -120,7 +120,7 @@ def test_risk_no_signals():
 
 def test_risk_weather_only_no_image_required():
     w = _make_weather(humidity=80, wind_speed=10, pressure=995)
-    score, level, trend, confidence, factors, rec = compute_risk_score(weather=w)
+    score, level, trend, confidence, factors, rec, *rest = compute_risk_score(weather=w)
     assert score > 0
     assert level in ("Low", "Moderate", "High", "Critical")
     # Confidence: 1 of 4 signals = 25%
@@ -133,7 +133,7 @@ def test_risk_weather_only_no_image_required():
 # -------------------------------------------------------
 
 def test_risk_rainfall_primary():
-    score, level, trend, confidence, factors, rec = compute_risk_score(
+    score, level, trend, confidence, factors, rec, *rest = compute_risk_score(
         rainfall_forecast_mm=120
     )
     assert score >= 50  # heavy rain should be High risk
@@ -146,7 +146,7 @@ def test_risk_rainfall_primary():
 
 def test_risk_all_signals_with_image():
     w = _make_weather(humidity=85, wind_speed=12, pressure=990)
-    score, level, trend, confidence, factors, rec = compute_risk_score(
+    score, level, trend, confidence, factors, rec, *rest = compute_risk_score(
         flood_image_confidence=78.0,
         flood_image_label="Flood",
         rainfall_forecast_mm=80,
@@ -164,12 +164,14 @@ def test_risk_all_signals_with_image():
 
 def test_risk_image_no_flood_reduces_score():
     w = _make_weather(humidity=50, wind_speed=3, pressure=1010)
-    score_no_image, _, _, _, _, _ = compute_risk_score(weather=w)
-    score_with_no_flood, _, _, _, _, _ = compute_risk_score(
+    res_no_image = compute_risk_score(weather=w)
+    score_no_image = res_no_image[0]
+    res_with_no_flood = compute_risk_score(
         flood_image_confidence=90.0,
         flood_image_label="No Flood",
         weather=w,
     )
+    score_with_no_flood = res_with_no_flood[0]
     # "No Flood" image should reduce or not inflate the score
     assert score_with_no_flood <= score_no_image + 5  # small tolerance
 
@@ -181,11 +183,12 @@ def test_risk_image_no_flood_reduces_score():
 def test_weight_normalization_no_image():
     """Without image, weights should redistribute so score is still valid 0-100."""
     w = _make_weather(humidity=90, wind_speed=15, pressure=985)
-    score, _, _, _, _, _ = compute_risk_score(
+    res = compute_risk_score(
         rainfall_forecast_mm=150,
         weather=w,
         recent_risk_scores=[40, 55, 70],
     )
+    score = res[0]
     assert 0 <= score <= 100
 
 
@@ -193,10 +196,11 @@ def test_risk_score_bounds():
     """Score must always be within 0-100."""
     for rainfall in [0, 10, 50, 200, 500]:
         w = _make_weather(humidity=100, wind_speed=25, pressure=950)
-        score, _, _, _, _, _ = compute_risk_score(
+        res = compute_risk_score(
             rainfall_forecast_mm=rainfall,
             weather=w,
         )
+        score = res[0]
         assert 0 <= score <= 100, f"Score {score} out of bounds for rainfall={rainfall}"
 
 
@@ -206,10 +210,11 @@ def test_risk_score_bounds():
 
 def test_contributing_factors_have_required_keys():
     w = _make_weather(humidity=75, wind_speed=8, pressure=1000)
-    _, _, _, _, factors, _ = compute_risk_score(
+    res = compute_risk_score(
         rainfall_forecast_mm=60,
         weather=w,
     )
+    factors = res[4]
     for f in factors:
         assert "key" in f
         assert "label" in f
@@ -219,8 +224,9 @@ def test_contributing_factors_have_required_keys():
 
 def test_recommendation_not_empty():
     w = _make_weather(humidity=90, wind_speed=18, pressure=980)
-    _, _, _, _, _, rec = compute_risk_score(
+    res = compute_risk_score(
         rainfall_forecast_mm=120,
         weather=w,
     )
+    rec = res[5]
     assert len(rec) > 10
