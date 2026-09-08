@@ -19,6 +19,16 @@ const venvPython = isWin
 let cmd = 'uvicorn';
 let args = ['app.main:app', '--reload'];
 
+if (!fs.existsSync(venvPython) && !fs.existsSync(venvUvicorn)) {
+  console.log('[Backend] Virtual environment not found. Running automated setup...');
+  const { execSync } = await import('child_process');
+  try {
+    execSync('node setup.js', { cwd: __dirname, stdio: 'inherit' });
+  } catch (e) {
+    console.error('[Backend] Auto-setup failed. Please run `npm run setup` manually.');
+  }
+}
+
 if (fs.existsSync(venvUvicorn)) {
   cmd = venvUvicorn;
 } else if (fs.existsSync(venvPython)) {

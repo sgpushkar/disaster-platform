@@ -6,18 +6,32 @@
 - Node.js 18+
 - A free [OpenWeatherMap API key](https://openweathermap.org/api)
 
-## 1. Clone / extract the project
+## Quick Automated Setup (1-Click)
 
+The fastest and easiest way to prepare everything (Python venv, libraries, models, and config):
+
+### Windows
+Double-click **`setup.bat`** in the project root, or run:
 ```bash
-cd disaster-platform
+npm run setup
 ```
 
+### macOS / Linux
 ```bash
-# Start both Backend and Frontend concurrently from project root
+chmod +x setup.sh
+./setup.sh
+# or:
+npm run setup
+```
+
+After setup finishes, start both services together:
+```bash
 npm run dev
 ```
 
-Or start them individually:
+---
+
+## Manual Setup (Step-by-Step)
 
 ### Backend
 ```bash
