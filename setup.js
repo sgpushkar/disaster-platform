@@ -44,6 +44,7 @@ export function trainModels(pyCmd = venvPython) {
   log('4/5', 'Checking Machine Learning models...');
   const models = [
     { name: 'Disaster Risk Model', file: path.join(backendDir, 'models', 'disaster_risk_model.joblib'), script: 'ml/train_disaster_risk_model.py' },
+    { name: 'DisasterScope Recon Model', file: path.join(backendDir, 'models', 'disasterscope_model.joblib'), script: 'ml/train_disasterscope_model.py' },
     { name: 'Rainfall LSTM Model', file: path.join(backendDir, 'models', 'lstm_model.joblib'), script: 'ml/train_rainfall_model.py' },
     { name: 'Flood Image Model', file: path.join(backendDir, 'models', 'flood_model.joblib'), script: 'ml/train_flood_model.py' }
   ];

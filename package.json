@@ -9,6 +9,8 @@
     "dev:backend": "node start-backend.js",
     "dev:frontend": "npm --prefix frontend run dev",
     "train:all": "node -e \"import('./setup.js').then(m => m.trainModels())\"",
+    "train:disasterscope": "backend\\venv\\Scripts\\python.exe ml/train_disasterscope_model.py",
+    "download:disasterscope": "backend\\venv\\Scripts\\python.exe ml/download_disasterscope.py",
     "build": "cd frontend && npm install && npm run build",
     "preview": "npm --prefix frontend run preview",
     "install:all": "npm install && npm --prefix frontend install",
