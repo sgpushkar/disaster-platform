@@ -23,8 +23,9 @@ function ServerStatus({ status }) {
 }
 
 export default function Login() {
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(() => localStorage.getItem('remembered_email') || '')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('remember_me') !== 'false')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('Authenticating...')
@@ -89,6 +90,13 @@ export default function Login() {
 
     try {
       await login(emailVal, passwordVal)
+      if (rememberMe) {
+        localStorage.setItem('remembered_email', emailVal)
+        localStorage.setItem('remember_me', 'true')
+      } else {
+        localStorage.removeItem('remembered_email')
+        localStorage.setItem('remember_me', 'false')
+      }
       navigate('/dashboard')
     } catch (err) {
       clearTimeout(wakeTimer)
@@ -106,7 +114,7 @@ export default function Login() {
       setLoading(false)
       setLoadingMsg('Authenticating...')
     }
-  }, [login, navigate, scheduleRetry])
+  }, [login, navigate, scheduleRetry, rememberMe])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -127,6 +135,12 @@ export default function Login() {
     } else {
       pingServer()
     }
+  }
+
+  const handleAutofillPushkar = () => {
+    setEmail('pushkarmhatre424@gmail.com')
+    setPassword('password123')
+    formRef.current = { email: 'pushkarmhatre424@gmail.com', password: 'password123' }
   }
 
   return (
@@ -155,12 +169,14 @@ export default function Login() {
               <Mail className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 id="login-email"
+                name="email"
                 type="email"
+                autoComplete="username email"
                 required
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); formRef.current.email = e.target.value }}
                 className="input-control pl-9 text-xs"
-                placeholder="operator@disaster-intel.gov"
+                placeholder="pushkarmhatre424@gmail.com"
               />
             </div>
           </div>
@@ -171,7 +187,9 @@ export default function Login() {
               <Lock className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 id="login-password"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); formRef.current.password = e.target.value }}
@@ -179,6 +197,27 @@ export default function Login() {
                 placeholder="••••••••••••"
               />
             </div>
+          </div>
+
+          {/* Remember me & Quick Autofill Row */}
+          <div className="flex items-center justify-between text-xs pt-0.5">
+            <label className="flex items-center gap-2 cursor-pointer text-zinc-400 hover:text-zinc-200 select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="rounded border-slate-700 bg-slate-900 text-red-600 focus:ring-0 focus:ring-offset-0 h-3.5 w-3.5"
+              />
+              <span>Remember me</span>
+            </label>
+            <button
+              type="button"
+              onClick={handleAutofillPushkar}
+              className="text-[11px] font-mono text-zinc-400 hover:text-red-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded transition-colors"
+              title="Quick-fill Pushkar admin credentials"
+            >
+              ⚡ Fill Pushkar (Admin)
+            </button>
           </div>
 
           {/* Error / Network error block */}

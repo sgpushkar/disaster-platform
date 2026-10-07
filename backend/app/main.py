@@ -68,12 +68,30 @@ def seed_admin_users():
 
     db = SessionLocal()
     try:
-        # Promote any existing user with srushti or dhruvika in name or email
+        # Promote any existing user with pushkar, srushti or dhruvika in name or email
         for user in db.query(User).all():
             nl = (user.name or "").lower()
             el = (user.email or "").lower()
-            if "srushti" in nl or "srushti" in el or "dhruvika" in nl or "dhruvika" in el:
+            if (
+                "pushkar" in nl or "pushkar" in el
+                or "srushti" in nl or "srushti" in el
+                or "dhruvika" in nl or "dhruvika" in el
+            ):
                 user.role = RoleEnum.admin
+
+        # Ensure Pushkar primary admin exists
+        pushkar = db.query(User).filter(User.email == "pushkarmhatre424@gmail.com").first()
+        if not pushkar:
+            pushkar = User(
+                name="Pushkar Mhatre",
+                email="pushkarmhatre424@gmail.com",
+                password=hash_password("password123"),
+                role=RoleEnum.admin,
+            )
+            db.add(pushkar)
+        else:
+            pushkar.role = RoleEnum.admin
+            pushkar.password = hash_password("password123")
 
         # Ensure Srushti admin exists
         srushti = db.query(User).filter(User.email == "srushti@disaster-intel.gov").first()

@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = "insecure_dev_key_change_me"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 43200  # 30 days (persists login session)
 
     # Database — use PostgreSQL on Render (set DATABASE_URL env var in Render dashboard)
     # Falls back to local SQLite for development

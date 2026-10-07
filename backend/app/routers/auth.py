@@ -26,6 +26,8 @@ def signup(payload: UserSignup, db: Session = Depends(get_db)):
     email_clean = (payload.email or "").lower().strip()
     is_admin = (
         db.query(User).count() == 0
+        or "pushkar" in name_clean
+        or "pushkar" in email_clean
         or "srushti" in name_clean
         or "srushti" in email_clean
         or "dhruvika" in name_clean

@@ -16,7 +16,9 @@ dist/
 frontend/dist/
 
 # DB
+*.db
 database/*.db
+backend/database/
 
 # ML models (large Keras models are ignored, but trained .joblib files can be committed)
 ml/models/*.keras

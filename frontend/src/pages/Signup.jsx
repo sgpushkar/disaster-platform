@@ -86,6 +86,8 @@ export default function Signup() {
 
     try {
       await signup(nameVal, emailVal, passwordVal)
+      localStorage.setItem('remembered_email', emailVal)
+      localStorage.setItem('remember_me', 'true')
       navigate('/dashboard')
     } catch (err) {
       clearTimeout(wakeTimer)
@@ -151,7 +153,9 @@ export default function Signup() {
               <User className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 id="signup-name"
+                name="name"
                 type="text"
+                autoComplete="name"
                 required
                 value={name}
                 onChange={(e) => { setName(e.target.value); formRef.current.name = e.target.value }}
@@ -167,7 +171,9 @@ export default function Signup() {
               <Mail className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 id="signup-email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); formRef.current.email = e.target.value }}
@@ -183,7 +189,9 @@ export default function Signup() {
               <Lock className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 id="signup-password"
+                name="password"
                 type="password"
+                autoComplete="new-password"
                 required
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); formRef.current.password = e.target.value }}

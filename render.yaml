@@ -18,13 +18,19 @@ services:
       - key: OPENWEATHER_DEFAULT_LON
         value: "72.8777"
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
-        value: "60"
-      # Default to local SQLite for instant zero-config startup;
-      # override in Render dashboard with your PostgreSQL/Neon URL if using managed database
+        value: "43200"
       - key: DATABASE_URL
-        value: "sqlite:///./database/disaster.db"
+        sync: false
       - key: FRONTEND_ORIGIN
         value: "http://localhost:5173,https://disaster-intel-frontend.onrender.com"
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: SMS_ENABLED
+        value: "true"
 
   # Frontend React / Vite Static Site (for Render Blueprint deployment)
   - type: web
