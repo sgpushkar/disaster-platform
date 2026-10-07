@@ -8,11 +8,11 @@ import {
 
 const APK_URL = '/disaster-intel.apk'
 const APP_VERSION = '1.0.0'
-const APP_SIZE = '24.1 MB'
+const APP_SIZE = '33.7 MB'
 const MIN_ANDROID = 'Android 7.0+'
 
 const FEATURES = [
-  { icon: Bell, label: 'Real-Time Alerts', desc: 'Push notifications for flood & disaster warnings' },
+  { icon: Smartphone, label: 'SMS & Live Alerts', desc: 'Instant Twilio SMS broadcasts & disaster warnings' },
   { icon: MapPin, label: 'GIS Tactical Map', desc: 'Live danger zones and safe area routing' },
   { icon: Activity, label: 'LSTM Risk Engine', desc: 'AI-powered 14-day hazard forecasting' },
   { icon: Shield, label: 'Safe Area Finder', desc: 'Ranked shelters, hospitals & evacuation routes' },
