@@ -12,7 +12,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.models import models  # noqa: F401 - ensures models are registered before create_all
-from app.routers import auth, weather, predict, dashboard, admin, reports, risk, safety, evacuation, warnings
+from app.routers import auth, weather, predict, dashboard, admin, reports, risk, safety, evacuation, warnings, sms
 
 # Create all tables on startup (SQLite or PostgreSQL)
 try:
@@ -57,6 +57,7 @@ app.include_router(risk.router)
 app.include_router(safety.router)
 app.include_router(evacuation.router)
 app.include_router(warnings.router)
+app.include_router(sms.router)
 
 
 @app.on_event("startup")

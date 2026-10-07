@@ -166,3 +166,32 @@ class DangerZone(Base):
     is_active = Column(Boolean, default=True)
     timestamp = Column(DateTime, default=datetime.utcnow, index=True)
     expires_at = Column(DateTime, nullable=True)
+
+
+class SMSSubscriber(Base):
+    """Registered phone numbers for receiving emergency SMS notifications."""
+    __tablename__ = "sms_subscribers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    phone_number = Column(String(20), index=True, nullable=False)
+    name = Column(String(100), nullable=True)
+    location_name = Column(String(150), nullable=True)  # e.g. "Pune", "Mumbai", "All Regions"
+    min_risk_level = Column(String(20), default="High", nullable=False)  # "Moderate" | "High" | "Critical"
+    is_active = Column(Boolean, default=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+class SMSLog(Base):
+    """Delivery log for all sent or simulated emergency SMS alerts."""
+    __tablename__ = "sms_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recipient = Column(String(20), nullable=False, index=True)
+    message = Column(Text, nullable=False)
+    risk_level = Column(String(20), nullable=True)
+    alert_id = Column(Integer, ForeignKey("alerts.id"), nullable=True)
+    status = Column(String(20), nullable=False)  # 'delivered' | 'simulated' | 'failed'
+    provider_sid = Column(String(100), nullable=True)
+    error_message = Column(Text, nullable=True)
+    sent_at = Column(DateTime, default=datetime.utcnow, index=True)

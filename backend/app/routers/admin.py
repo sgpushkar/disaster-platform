@@ -103,6 +103,14 @@ def create_alert(payload: AlertCreate, db: Session = Depends(get_db), _admin=Dep
     db.add(alert)
     db.commit()
     db.refresh(alert)
+
+    # Dispatch SMS to subscribers for admin-broadcast emergency alerts
+    try:
+        from app.services.sms_service import dispatch_alert_sms
+        dispatch_alert_sms(alert, db)
+    except Exception:
+        pass
+
     return alert
 
 

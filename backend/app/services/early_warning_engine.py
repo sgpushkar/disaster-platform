@@ -196,11 +196,23 @@ def evaluate_and_alert(
     db.commit()
     db.refresh(alert)
 
+    # Automatically dispatch emergency SMS to active subscribers for High/Critical warnings
+    sms_stats = None
+    try:
+        from app.services.sms_service import dispatch_alert_sms
+        sms_stats = dispatch_alert_sms(alert, db)
+    except Exception as sms_err:
+        import logging
+        logging.getLogger("early_warning_engine").error(f"Failed to dispatch SMS alert: {sms_err}")
+
     result.update({
         "warning_issued": True,
         "title": title,
         "message": message,
         "recommended_action": action,
         "alert_id": alert.id,
+        "sms_dispatched": sms_stats is not None and (sms_stats.get("sent", 0) > 0 or sms_stats.get("simulated", 0) > 0),
+        "sms_stats": sms_stats,
     })
     return result
+

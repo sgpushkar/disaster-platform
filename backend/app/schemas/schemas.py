@@ -310,3 +310,58 @@ class DashboardOut(BaseModel):
     recent_alerts: List[AlertOut]
     current_risk_snapshot: Optional[RiskSnapshotOut] = None
     active_warnings_count: int = 0
+
+
+# ---------- SMS Alerts ----------
+class SMSSubscribeRequest(BaseModel):
+    phone_number: str = Field(min_length=7, max_length=20, description="E.164 or national phone number")
+    name: Optional[str] = Field(None, max_length=100)
+    location_name: Optional[str] = Field("All Regions", max_length=150)
+    min_risk_level: str = Field("High", description="Minimum alert severity: Moderate, High, or Critical")
+
+
+class SMSUnsubscribeRequest(BaseModel):
+    phone_number: str = Field(min_length=7, max_length=20)
+
+
+class SMSSubscriberOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    phone_number: str
+    name: Optional[str] = None
+    location_name: Optional[str] = "All Regions"
+    min_risk_level: str
+    is_active: bool
+    created_at: datetime
+
+
+class SMSLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    recipient: str
+    message: str
+    risk_level: Optional[str] = None
+    alert_id: Optional[int] = None
+    status: str
+    provider_sid: Optional[str] = None
+    error_message: Optional[str] = None
+    sent_at: datetime
+
+
+class SMSTestRequest(BaseModel):
+    phone_number: str = Field(min_length=7, max_length=20)
+    message: Optional[str] = None
+
+
+class SMSStatusOut(BaseModel):
+    provider: str
+    is_live: bool
+    total_subscribers: int
+    active_subscribers: int
+    recent_sms_count: int
+
+
+class SMSBroadcastRequest(BaseModel):
+    message: str = Field(min_length=5, max_length=500)
+    min_risk_level: Optional[str] = "High"
+    location_name: Optional[str] = None

@@ -61,6 +61,15 @@ class Settings(BaseSettings):
     # -------------------------------------------------------
     OSRM_BASE_URL: str = "https://router.project-osrm.org"
 
+    # -------------------------------------------------------
+    # SMS Alert Gateway (Twilio / Simulation fallback)
+    # -------------------------------------------------------
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    TWILIO_FROM_NUMBER: str = ""
+    SMS_ENABLED: bool = True
+    SMS_SIMULATION_MODE: bool = False
+
     @property
     def allowed_origins(self) -> list[str]:
         """Returns list of allowed CORS origins from comma-separated string."""
