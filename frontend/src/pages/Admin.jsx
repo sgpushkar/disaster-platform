@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import {
   Users, MapPin, Bell, ShieldAlert, Trash2, Plus, RefreshCw,
   Loader2, AlertTriangle, CheckCircle, Database, UserCog,
-  Clock, Bot, Leaf,
+  Clock, Bot, Leaf, Smartphone, Send, Radio, MessageSquare,
 } from 'lucide-react'
 import api from '../services/api'
 
@@ -23,6 +23,16 @@ export default function Admin() {
   const [users, setUsers] = useState([])
   const [locations, setLocations] = useState([])
   const [alerts, setAlerts] = useState([])
+  const [smsSubscribers, setSmsSubscribers] = useState([])
+  const [smsLogs, setSmsLogs] = useState([])
+  const [smsStatus, setSmsStatus] = useState(null)
+  const [smsLoading, setSmsLoading] = useState(false)
+  const [testPhone, setTestPhone] = useState('')
+  const [testSending, setTestSending] = useState(false)
+  const [broadcastMessage, setBroadcastMessage] = useState('')
+  const [broadcastRisk, setBroadcastRisk] = useState('High')
+  const [broadcastLocation, setBroadcastLocation] = useState('All Regions')
+  const [broadcastSending, setBroadcastSending] = useState(false)
   const [tab, setTab] = useState('users')
 
   const [usersLoading, setUsersLoading] = useState(false)
@@ -48,7 +58,12 @@ export default function Admin() {
     location_name: '', recommended_action: '', expires_at: '',
   })
 
-  useEffect(() => { loadUsers(); loadLocations(); loadAlerts() }, [])
+  useEffect(() => {
+    loadUsers()
+    loadLocations()
+    loadAlerts()
+    loadSMSData()
+  }, [])
 
   const loadUsers = async () => {
     setUsersLoading(true)
@@ -129,10 +144,61 @@ export default function Admin() {
     finally { setSeedLoading(false) }
   }
 
+  const loadSMSData = async () => {
+    setSmsLoading(true)
+    try {
+      const [statusRes, subsRes, logsRes] = await Promise.all([
+        api.get('/sms/status'),
+        api.get('/sms/subscribers'),
+        api.get('/sms/logs'),
+      ])
+      setSmsStatus(statusRes.data)
+      setSmsSubscribers(subsRes.data)
+      setSmsLogs(logsRes.data)
+    } catch (_) {}
+    finally { setSmsLoading(false) }
+  }
+
+  const sendBroadcastSMS = async (e) => {
+    e.preventDefault()
+    if (!broadcastMessage.trim()) return
+    setBroadcastSending(true)
+    try {
+      const r = await api.post('/sms/broadcast', {
+        message: broadcastMessage.trim(),
+        min_risk_level: broadcastRisk,
+        location_name: broadcastLocation === 'All Regions' ? null : broadcastLocation,
+      })
+      showFeedback('success', `SMS broadcast sent: ${r.data.sent} delivered, ${r.data.simulated} simulated.`)
+      setBroadcastMessage('')
+      loadSMSData()
+    } catch (err) {
+      showFeedback('error', err.response?.data?.detail || 'Broadcast failed')
+    } finally {
+      setBroadcastSending(false)
+    }
+  }
+
+  const sendAdminTestSMS = async (e) => {
+    e.preventDefault()
+    if (!testPhone.trim()) return
+    setTestSending(true)
+    try {
+      const r = await api.post('/sms/test', { phone_number: testPhone.trim() })
+      showFeedback('success', `Test SMS dispatched to ${r.data.result.recipient} (${r.data.result.status}).`)
+      loadSMSData()
+    } catch (err) {
+      showFeedback('error', err.response?.data?.detail || 'Test SMS failed')
+    } finally {
+      setTestSending(false)
+    }
+  }
+
   const TABS = [
     { id: 'users', label: 'Users', icon: Users },
     { id: 'locations', label: 'Locations', icon: MapPin },
     { id: 'alerts', label: 'Alerts', icon: Bell },
+    { id: 'sms', label: 'SMS Network', icon: Smartphone },
   ]
 
   const inputCls = 'input-control text-xs py-2'
@@ -203,7 +269,7 @@ export default function Admin() {
             <Icon className="h-3.5 w-3.5" />
             {label}
             <span className="text-[10px] font-mono text-zinc-500">
-              ({id === 'users' ? users.length : id === 'locations' ? locations.length : alerts.length})
+              ({id === 'users' ? users.length : id === 'locations' ? locations.length : id === 'alerts' ? alerts.length : smsSubscribers.length})
             </span>
           </button>
         ))}
@@ -405,6 +471,239 @@ export default function Admin() {
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── SMS Alerts Management Tab ── */}
+      {tab === 'sms' && (
+        <div className="space-y-5">
+          {/* SMS Status Stats Header */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="card-panel p-4 flex flex-col justify-between">
+              <span className="text-[11px] font-mono text-zinc-500 uppercase">Gateway Provider</span>
+              <div className="flex items-center gap-2 mt-2">
+                <span className={`h-2 w-2 rounded-full ${smsStatus?.is_live ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
+                <span className="text-sm font-bold text-white">
+                  {smsStatus?.is_live ? 'Twilio Live' : 'Dev Simulation'}
+                </span>
+              </div>
+              <span className="text-[10px] text-zinc-500 mt-1">
+                {smsStatus?.is_live ? 'Live carrier delivery active' : 'Safe local logging mode'}
+              </span>
+            </div>
+
+            <div className="card-panel p-4 flex flex-col justify-between">
+              <span className="text-[11px] font-mono text-zinc-500 uppercase">Subscribers</span>
+              <div className="text-2xl font-bold font-mono text-white mt-1">
+                {smsStatus?.active_subscribers || 0}
+              </div>
+              <span className="text-[10px] text-emerald-400 mt-1">
+                Active alert recipients
+              </span>
+            </div>
+
+            <div className="card-panel p-4 flex flex-col justify-between">
+              <span className="text-[11px] font-mono text-zinc-500 uppercase">Total Dispatches</span>
+              <div className="text-2xl font-mono font-bold text-white mt-1">
+                {smsStatus?.recent_sms_count || 0}
+              </div>
+              <span className="text-[10px] text-zinc-400 mt-1">
+                Delivered & simulated logs
+              </span>
+            </div>
+
+            <div className="card-panel p-4 flex flex-col justify-between items-center text-center">
+              <span className="text-[11px] font-mono text-zinc-500 uppercase mb-2">Sync Status</span>
+              <button
+                onClick={loadSMSData}
+                disabled={smsLoading}
+                className="btn-secondary text-xs py-1.5 px-3 w-full"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${smsLoading ? 'animate-spin' : ''}`} />
+                Refresh Logs
+              </button>
+            </div>
+          </div>
+
+          {/* Broadcast & Test Split */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* Direct SMS Broadcast Composer */}
+            <form onSubmit={sendBroadcastSMS} className="card-panel p-5 space-y-3 lg:col-span-2">
+              <h3 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+                <MessageSquare className="h-3.5 w-3.5 text-red-500" />
+                Emergency SMS Broadcast to Citizens
+              </h3>
+              <p className="text-xs text-zinc-400">
+                Instantly transmit a flash SMS alert to all registered subscribers matching location and severity.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-mono text-zinc-500 uppercase">Target Region</label>
+                  <select
+                    value={broadcastLocation}
+                    onChange={e => setBroadcastLocation(e.target.value)}
+                    className={selectCls}
+                  >
+                    {['All Regions', 'Pune', 'Mumbai', 'Nashik', 'Nagpur', 'Thane', 'Kolhapur'].map(loc => (
+                      <option key={loc} value={loc}>{loc}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono text-zinc-500 uppercase">Minimum Severity</label>
+                  <select
+                    value={broadcastRisk}
+                    onChange={e => setBroadcastRisk(e.target.value)}
+                    className={selectCls}
+                  >
+                    {['Critical', 'High', 'Moderate'].map(r => (
+                      <option key={r} value={r}>{r} and above</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-[10px] font-mono text-zinc-500 uppercase">Alert Message Body</label>
+                  <span className="text-[10px] font-mono text-zinc-500">{broadcastMessage.length}/320</span>
+                </div>
+                <textarea
+                  required
+                  rows={3}
+                  value={broadcastMessage}
+                  onChange={e => setBroadcastMessage(e.target.value)}
+                  placeholder="[DISASTER INTEL ALERT] Extreme flood risk detected. River levels rising rapidly. Evacuate low-lying areas immediately. Helpline: 112."
+                  className={`${inputCls} resize-none`}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={broadcastSending || !broadcastMessage.trim()}
+                className="btn-primary text-xs py-2 px-4"
+              >
+                {broadcastSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                {broadcastSending ? 'Broadcasting SMS...' : 'Transmit Emergency SMS'}
+              </button>
+            </form>
+
+            {/* Test SMS Sender Tool */}
+            <form onSubmit={sendAdminTestSMS} className="card-panel p-5 space-y-3">
+              <h3 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+                <Smartphone className="h-3.5 w-3.5 text-cyan-400" />
+                Test SMS Verification
+              </h3>
+              <p className="text-xs text-zinc-400">
+                Dispatch an immediate test SMS to any mobile number to verify gateway connectivity.
+              </p>
+              <div>
+                <label className="text-[10px] font-mono text-zinc-500 uppercase">Mobile Number</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="+919876543210"
+                  value={testPhone}
+                  onChange={e => setTestPhone(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={testSending || !testPhone.trim()}
+                className="btn-secondary text-xs py-2 px-4 w-full"
+              >
+                {testSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5 text-red-400" />}
+                {testSending ? 'Sending Test...' : 'Send Test SMS'}
+              </button>
+            </form>
+          </div>
+
+          {/* Subscribers Table */}
+          <div className="card-panel overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+                <Users className="h-3.5 w-3.5 text-red-400" />
+                Registered SMS Alert Subscribers ({smsSubscribers.length})
+              </h3>
+            </div>
+            {smsSubscribers.length === 0 ? (
+              <div className="p-8 text-center text-xs text-zinc-500">
+                No mobile subscribers registered yet. Citizens can subscribe on the Alerts page.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-800 max-h-72 overflow-y-auto">
+                {smsSubscribers.map((sub) => (
+                  <div key={sub.id} className="p-3.5 flex items-center justify-between text-xs hover:bg-slate-900/40">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-white">{sub.phone_number}</span>
+                        {sub.name && <span className="text-zinc-400">({sub.name})</span>}
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-zinc-300">
+                          {sub.location_name || 'All Regions'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-zinc-500">
+                        Min Risk: {sub.min_risk_level} · Subscribed: {new Date(sub.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                      sub.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/25' : 'bg-slate-800 text-zinc-500'
+                    }`}>
+                      {sub.is_active ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* SMS Delivery Audit Logs */}
+          <div className="card-panel overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between">
+              <h3 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
+                <Radio className="h-3.5 w-3.5 text-amber-400" />
+                Recent SMS Dispatch Audit Trail ({smsLogs.length})
+              </h3>
+            </div>
+            {smsLogs.length === 0 ? (
+              <div className="p-8 text-center text-xs text-zinc-500">
+                No SMS dispatches recorded yet.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-800 max-h-80 overflow-y-auto">
+                {smsLogs.map((log) => (
+                  <div key={log.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs hover:bg-slate-900/40">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-zinc-200">{log.recipient}</span>
+                        <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold uppercase border ${
+                          log.status === 'delivered' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
+                          log.status === 'simulated' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
+                          'bg-red-500/15 text-red-400 border-red-500/30'
+                        }`}>
+                          {log.status}
+                        </span>
+                        {log.risk_level && (
+                          <span className="text-[10px] font-mono text-zinc-400">
+                            [{log.risk_level}]
+                          </span>
+                        )}
+                        <span className="text-[10px] font-mono text-zinc-500">
+                          {new Date(log.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-zinc-400 text-xs line-clamp-1">{log.message}</p>
+                      {log.error_message && (
+                        <p className="text-[10px] text-red-400">{log.error_message}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

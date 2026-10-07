@@ -5,6 +5,7 @@ import {
   CheckCircle, Bot, UserCog, MapPin, Info
 } from 'lucide-react'
 import api from '../services/api'
+import SMSAlertSubscriber from '../components/SMSAlertSubscriber'
 
 const LEVEL_STYLES = {
   Critical: 'bg-red-500/15 text-red-300 border-red-500/35',
@@ -66,6 +67,9 @@ export default function Alerts() {
           </p>
         </div>
       </div>
+
+      {/* SMS Emergency Alert Subscription */}
+      <SMSAlertSubscriber />
 
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-3">
