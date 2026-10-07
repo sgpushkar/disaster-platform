@@ -162,7 +162,8 @@ Run with `pytest tests/ -v` — see [`README.md`](../README.md) for setup.
 - **No image-based flood segmentation** (only binary classification) —
   segmentation (pixel-level flood extent) would give richer risk maps but
   requires pixel-labeled datasets, a heavier lift than binary labels.
-- **Future work**: SMS/push alert delivery integration, satellite imagery
+- **SMS emergency alert delivery**: fully implemented with Twilio REST API integration, developer simulation fallback, automated AI early warning dispatch, and citizen subscriber management.
+- **Future work**: push alert delivery integration, satellite imagery
   ingestion for wider-area monitoring, mobile app companion, multi-language
   support for wider citizen accessibility.
 
