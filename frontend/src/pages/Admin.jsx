@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users, MapPin, Bell, ShieldAlert, Trash2, Plus, RefreshCw,
   Loader2, AlertTriangle, CheckCircle, Database, UserCog,
   Clock, Bot, Leaf, Smartphone, Send, Radio, MessageSquare,
+  Wind, CloudRain, Waves, Search, Phone, Shield, ShieldCheck,
 } from 'lucide-react'
 import api from '../services/api'
+import { useAuth } from '../context/AuthContext'
 
 function AdminSection({ title, icon: Icon, children }) {
   return (
@@ -20,7 +22,9 @@ function AdminSection({ title, icon: Icon, children }) {
 }
 
 export default function Admin() {
+  const { user: currentUser } = useAuth()
   const [users, setUsers] = useState([])
+  const [userSearch, setUserSearch] = useState('')
   const [locations, setLocations] = useState([])
   const [alerts, setAlerts] = useState([])
   const [smsSubscribers, setSmsSubscribers] = useState([])
@@ -29,15 +33,23 @@ export default function Admin() {
   const [smsLoading, setSmsLoading] = useState(false)
   const [testPhone, setTestPhone] = useState('')
   const [testSending, setTestSending] = useState(false)
+
+  // Emergency Flash SMS Broadcast states
   const [broadcastMessage, setBroadcastMessage] = useState('')
   const [broadcastRisk, setBroadcastRisk] = useState('High')
   const [broadcastLocation, setBroadcastLocation] = useState('All Regions')
+  const [targetAudience, setTargetAudience] = useState('both') // 'both' | 'users' | 'subscribers'
+  const [selectedHazard, setSelectedHazard] = useState('cyclone') // 'cyclone' | 'heavy_rainfall' | 'flood'
+  const [mockSmsMode, setMockSmsMode] = useState(true)
   const [broadcastSending, setBroadcastSending] = useState(false)
+  const [lastDispatchedSms, setLastDispatchedSms] = useState(null)
+
   const [tab, setTab] = useState('users')
 
   const [usersLoading, setUsersLoading] = useState(false)
   const [locLoading, setLocLoading] = useState(false)
   const [alertLoading, setAlertLoading] = useState(false)
+
   const [seedLoading, setSeedLoading] = useState(false)
   const [seedMsg, setSeedMsg] = useState('')
 
@@ -159,6 +171,36 @@ export default function Admin() {
     finally { setSmsLoading(false) }
   }
 
+  const updateUserRole = async (userId, newRole) => {
+    try {
+      const r = await api.patch(`/admin/users/${userId}/role`, { role: newRole })
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: r.data.role } : u))
+      showFeedback('success', `User role updated to ${newRole.toUpperCase()}.`)
+    } catch (err) {
+      showFeedback('error', err.response?.data?.detail || 'Failed to update role')
+    }
+  }
+
+  const applyHazardPreset = (type) => {
+    setSelectedHazard(type)
+    if (type === 'cyclone') {
+      setBroadcastRisk('Critical')
+      setBroadcastMessage(
+        `[DISASTER INTEL ALERT] CYCLONE EMERGENCY: Super cyclonic storm approaching with destructive gale-force winds (>85 km/h) and coastal surge. Evacuate to cyclone shelters immediately. Secure all loose items. Helpline: 112 / 1077.`
+      )
+    } else if (type === 'heavy_rainfall') {
+      setBroadcastRisk('High')
+      setBroadcastMessage(
+        `[DISASTER INTEL ALERT] HEAVY RAINFALL WARNING: Extreme precipitation cloudburst (>75mm/h) detected. Rapid street inundation and drain overflow underway. Avoid underpasses and low-lying roadways. Helpline: 112.`
+      )
+    } else if (type === 'flood') {
+      setBroadcastRisk('Critical')
+      setBroadcastMessage(
+        `[DISASTER INTEL ALERT] FLASH FLOOD EVACUATION: Dangerous river inundation detected in low-lying zones. Move immediately to highest ground or nearest designated relief shelter. Avoid flooded roads. Helpline: 112.`
+      )
+    }
+  }
+
   const sendBroadcastSMS = async (e) => {
     e.preventDefault()
     if (!broadcastMessage.trim()) return
@@ -168,16 +210,29 @@ export default function Admin() {
         message: broadcastMessage.trim(),
         min_risk_level: broadcastRisk,
         location_name: broadcastLocation === 'All Regions' ? null : broadcastLocation,
+        target_audience: targetAudience,
+        disaster_type: selectedHazard,
+        mock_mode: mockSmsMode,
       })
-      showFeedback('success', `SMS broadcast sent: ${r.data.sent} delivered, ${r.data.simulated} simulated.`)
-      setBroadcastMessage('')
+      const totalSent = r.data.sent + r.data.simulated
+      showFeedback('success', `Emergency SMS dispatched to ${totalSent} recipients (${r.data.is_mock ? 'Mock Simulation Mode' : 'Live Gateway'}).`)
+      setLastDispatchedSms({
+        message: broadcastMessage.trim(),
+        type: selectedHazard,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        count: totalSent,
+        isMock: r.data.is_mock,
+        audience: targetAudience,
+      })
       loadSMSData()
+      loadAlerts()
     } catch (err) {
       showFeedback('error', err.response?.data?.detail || 'Broadcast failed')
     } finally {
       setBroadcastSending(false)
     }
   }
+
 
   const sendAdminTestSMS = async (e) => {
     e.preventDefault()
@@ -277,39 +332,112 @@ export default function Admin() {
 
       {/* ── Users Tab ── */}
       {tab === 'users' && (
-        <div className="space-y-3">
-          <div className="flex justify-end">
-            <button onClick={loadUsers} disabled={usersLoading} className="btn-secondary text-xs py-1.5 px-3">
-              <RefreshCw className={`h-3.5 w-3.5 ${usersLoading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-          {users.map((u) => (
-            <div key={u.id} className="card-panel p-3.5 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-slate-800 flex items-center justify-center text-sm font-bold text-zinc-300">
-                  {u.name[0]?.toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">{u.name}</p>
-                  <p className="text-xs font-mono text-zinc-400">{u.email}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
-                  u.role === 'admin'
-                    ? 'bg-red-500/10 text-red-400 border-red-500/25 font-bold'
-                    : 'bg-slate-800 text-zinc-400 border-slate-700'
-                }`}>
-                  {u.role}
-                </span>
-                <button onClick={() => deleteUser(u.id)} className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
+        <div className="space-y-4">
+          {/* Search & stats bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <input
+                type="text"
+                value={userSearch}
+                onChange={e => setUserSearch(e.target.value)}
+                placeholder="Search users by name, email, or phone..."
+                className="input-control pl-9 text-xs py-1.5"
+              />
             </div>
-          ))}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono text-zinc-400 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg">
+                📱 {users.filter(u => u.phone).length} with mobile phone
+              </span>
+              <button onClick={loadUsers} disabled={usersLoading} className="btn-secondary text-xs py-1.5 px-3">
+                <RefreshCw className={`h-3.5 w-3.5 ${usersLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* User cards */}
+          <div className="space-y-2">
+            {users
+              .filter(u => {
+                const q = userSearch.toLowerCase()
+                return (
+                  !q ||
+                  u.name?.toLowerCase().includes(q) ||
+                  u.email?.toLowerCase().includes(q) ||
+                  u.phone?.toLowerCase().includes(q)
+                )
+              })
+              .map((u) => {
+                const isMe = currentUser && currentUser.id === u.id
+                return (
+                  <div key={u.id} className="card-panel p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-700 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm ${
+                        u.role === 'admin'
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          : 'bg-slate-800 text-zinc-300 border border-slate-700'
+                      }`}>
+                        {u.name[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-white">{u.name}</p>
+                          {isMe && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              YOU
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 flex-wrap text-xs font-mono text-zinc-400 mt-0.5">
+                          <span>{u.email}</span>
+                          {u.phone ? (
+                            <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+                              📱 {u.phone}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-600 text-[11px]">No phone linked</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                      {/* Role switcher */}
+                      {!isMe && (
+                        <button
+                          onClick={() => updateUserRole(u.id, u.role === 'admin' ? 'user' : 'admin')}
+                          className="text-[11px] font-mono px-2.5 py-1 rounded-lg border border-slate-700 hover:border-slate-600 bg-slate-900 text-zinc-300 hover:text-white transition-all flex items-center gap-1"
+                          title={`Switch role to ${u.role === 'admin' ? 'User' : 'Admin'}`}
+                        >
+                          {u.role === 'admin' ? 'Demote to User' : '⚡ Promote to Admin'}
+                        </button>
+                      )}
+
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono border font-bold uppercase ${
+                        u.role === 'admin'
+                          ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                          : 'bg-slate-800 text-zinc-400 border-slate-700'
+                      }`}>
+                        {u.role}
+                      </span>
+
+                      {!isMe && (
+                        <button
+                          onClick={() => deleteUser(u.id)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                          title="Delete user"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+          </div>
         </div>
       )}
+
 
       {/* ── Locations Tab ── */}
       {tab === 'locations' && (
@@ -527,18 +655,103 @@ export default function Admin() {
           </div>
 
           {/* Broadcast & Test Split */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             {/* Direct SMS Broadcast Composer */}
-            <form onSubmit={sendBroadcastSMS} className="card-panel p-5 space-y-3 lg:col-span-2">
-              <h3 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
-                <MessageSquare className="h-3.5 w-3.5 text-red-500" />
-                Emergency SMS Broadcast to Citizens
-              </h3>
-              <p className="text-xs text-zinc-400">
-                Instantly transmit a flash SMS alert to all registered subscribers matching location and severity.
-              </p>
+            <form onSubmit={sendBroadcastSMS} className="card-panel p-5 space-y-4 lg:col-span-7">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-800">
+                <div>
+                  <h3 className="text-xs font-bold font-mono uppercase text-slate-200 flex items-center gap-1.5">
+                    <MessageSquare className="h-4 w-4 text-red-500" />
+                    Emergency SMS Command Console
+                  </h3>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    Dispatch instant early warnings to citizens &amp; operators via live carrier or mock simulation.
+                  </p>
+                </div>
+                {/* Mock Mode Toggle Badge */}
+                <label className="flex items-center gap-2 cursor-pointer text-xs select-none bg-slate-900 border border-slate-700/80 px-2.5 py-1 rounded-lg">
+                  <input
+                    type="checkbox"
+                    checked={mockSmsMode}
+                    onChange={e => setMockSmsMode(e.target.checked)}
+                    className="rounded border-slate-700 bg-slate-950 text-red-600 focus:ring-0 h-3.5 w-3.5"
+                  />
+                  <span className={`text-[10px] font-mono font-bold ${mockSmsMode ? 'text-amber-400' : 'text-zinc-400'}`}>
+                    {mockSmsMode ? '⚡ MOCK SIMULATION' : '🌐 LIVE CARRIER'}
+                  </span>
+                </label>
+              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* 1-Click Disaster Alert Presets */}
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                  Quick Hazard Presets (1-Click Fill):
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyHazardPreset('cyclone')}
+                    className={`p-2 rounded-lg border text-left transition-all ${
+                      selectedHazard === 'cyclone'
+                        ? 'bg-purple-500/15 border-purple-500/50 text-white shadow-sm shadow-purple-500/20'
+                        : 'bg-slate-900/80 border-slate-800 text-zinc-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-purple-300">
+                      <Wind className="h-3.5 w-3.5 text-purple-400" />
+                      Cyclone Alert
+                    </div>
+                    <p className="text-[10px] text-zinc-400 mt-0.5 line-clamp-1">Gale winds &gt;85 km/h &amp; coastal surge</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => applyHazardPreset('heavy_rainfall')}
+                    className={`p-2 rounded-lg border text-left transition-all ${
+                      selectedHazard === 'heavy_rainfall'
+                        ? 'bg-blue-500/15 border-blue-500/50 text-white shadow-sm shadow-blue-500/20'
+                        : 'bg-slate-900/80 border-slate-800 text-zinc-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-blue-300">
+                      <CloudRain className="h-3.5 w-3.5 text-blue-400" />
+                      Heavy Rainfall
+                    </div>
+                    <p className="text-[10px] text-zinc-400 mt-0.5 line-clamp-1">Intense downpour &gt;75mm cloudburst</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => applyHazardPreset('flood')}
+                    className={`p-2 rounded-lg border text-left transition-all ${
+                      selectedHazard === 'flood'
+                        ? 'bg-red-500/15 border-red-500/50 text-white shadow-sm shadow-red-500/20'
+                        : 'bg-slate-900/80 border-slate-800 text-zinc-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-red-300">
+                      <Waves className="h-3.5 w-3.5 text-red-400" />
+                      Flash Flood
+                    </div>
+                    <p className="text-[10px] text-zinc-400 mt-0.5 line-clamp-1">River overflow &amp; evacuation</p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Target audience & parameters */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10px] font-mono text-zinc-500 uppercase">Target Audience</label>
+                  <select
+                    value={targetAudience}
+                    onChange={e => setTargetAudience(e.target.value)}
+                    className={selectCls}
+                  >
+                    <option value="both">Both (Users + Subscribers)</option>
+                    <option value="users">Registered Users with Phone</option>
+                    <option value="subscribers">SMS Subscribers Only</option>
+                  </select>
+                </div>
                 <div>
                   <label className="text-[10px] font-mono text-zinc-500 uppercase">Target Region</label>
                   <select
@@ -552,14 +765,14 @@ export default function Admin() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-mono text-zinc-500 uppercase">Minimum Severity</label>
+                  <label className="text-[10px] font-mono text-zinc-500 uppercase">Severity Level</label>
                   <select
                     value={broadcastRisk}
                     onChange={e => setBroadcastRisk(e.target.value)}
                     className={selectCls}
                   >
                     {['Critical', 'High', 'Moderate'].map(r => (
-                      <option key={r} value={r}>{r} and above</option>
+                      <option key={r} value={r}>{r} Severity</option>
                     ))}
                   </select>
                 </div>
@@ -567,7 +780,7 @@ export default function Admin() {
 
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-[10px] font-mono text-zinc-500 uppercase">Alert Message Body</label>
+                  <label className="text-[10px] font-mono text-zinc-500 uppercase">Alert Message Text</label>
                   <span className="text-[10px] font-mono text-zinc-500">{broadcastMessage.length}/320</span>
                 </div>
                 <textarea
@@ -575,51 +788,110 @@ export default function Admin() {
                   rows={3}
                   value={broadcastMessage}
                   onChange={e => setBroadcastMessage(e.target.value)}
-                  placeholder="[DISASTER INTEL ALERT] Extreme flood risk detected. River levels rising rapidly. Evacuate low-lying areas immediately. Helpline: 112."
+                  placeholder="[DISASTER INTEL ALERT] Extreme flood / cyclone risk detected. Evacuate low-lying areas immediately. Helpline: 112."
                   className={`${inputCls} resize-none`}
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={broadcastSending || !broadcastMessage.trim()}
-                className="btn-primary text-xs py-2 px-4"
-              >
-                {broadcastSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                {broadcastSending ? 'Broadcasting SMS...' : 'Transmit Emergency SMS'}
-              </button>
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={broadcastSending || !broadcastMessage.trim()}
+                  className="btn-primary text-xs py-2 px-5 flex items-center gap-2"
+                >
+                  {broadcastSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                  {broadcastSending ? 'Dispatching SMS Broadcast...' : 'Broadcast Emergency Alert'}
+                </button>
+                <span className="text-[10px] font-mono text-zinc-400">
+                  {mockSmsMode ? 'Simulates instant carrier dispatch' : 'Transmits via configured SMS provider'}
+                </span>
+              </div>
             </form>
 
-            {/* Test SMS Sender Tool */}
-            <form onSubmit={sendAdminTestSMS} className="card-panel p-5 space-y-3">
-              <h3 className="text-xs font-bold font-mono uppercase text-slate-300 flex items-center gap-1.5">
-                <Smartphone className="h-3.5 w-3.5 text-cyan-400" />
-                Test SMS Verification
-              </h3>
-              <p className="text-xs text-zinc-400">
-                Dispatch an immediate test SMS to any mobile number to verify gateway connectivity.
-              </p>
-              <div>
-                <label className="text-[10px] font-mono text-zinc-500 uppercase">Mobile Number</label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="+919876543210"
-                  value={testPhone}
-                  onChange={e => setTestPhone(e.target.value)}
-                  className={inputCls}
-                />
+            {/* Live Interactive Phone Simulator & Test SMS */}
+            <div className="space-y-4 lg:col-span-5 flex flex-col justify-between">
+              {/* Smartphone Simulator Mockup */}
+              <div className="card-panel p-4 bg-black/80 border-slate-800 rounded-2xl shadow-xl flex flex-col justify-between h-full">
+                {/* Phone Top Bar */}
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-800 text-[10px] font-mono text-zinc-400">
+                  <span className="font-bold text-white">9:41 AM</span>
+                  <div className="h-3.5 w-20 bg-zinc-900 rounded-full border border-zinc-800" />
+                  <div className="flex items-center gap-1.5">
+                    <span>5G</span>
+                    <span className="h-2 w-3.5 border border-zinc-400 rounded-sm inline-block" />
+                  </div>
+                </div>
+
+                {/* Simulated Screen Content */}
+                <div className="py-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                      Interactive Mobile Preview
+                    </span>
+                    <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                  </div>
+
+                  {/* Incoming Flash SMS Card on Simulated Phone */}
+                  <motion.div
+                    key={lastDispatchedSms ? lastDispatchedSms.time : 'placeholder'}
+                    initial={{ scale: 0.96, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="p-3.5 rounded-xl bg-zinc-900/90 border border-red-500/40 shadow-lg shadow-red-500/10 space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-red-400 text-xs font-bold">
+                        <AlertTriangle className="h-3.5 w-3.5 animate-bounce" />
+                        <span>EMERGENCY ALERT SYSTEM</span>
+                      </div>
+                      <span className="text-[9px] font-mono text-zinc-400">
+                        {lastDispatchedSms ? lastDispatchedSms.time : 'Just now'}
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-zinc-200 font-sans leading-relaxed">
+                      {broadcastMessage.trim() ||
+                        '[DISASTER INTEL ALERT] CYCLONE EMERGENCY: Gale-force winds (>85 km/h) approaching Pune/Mumbai region. Move to nearest designated shelter immediately. Helpline: 112 / 1077.'}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-zinc-800/80 text-[10px] font-mono text-zinc-400">
+                      <span className="text-emerald-400">
+                        {lastDispatchedSms ? `✓ Transmitted to ${lastDispatchedSms.count} phones` : 'Ready to command'}
+                      </span>
+                      <span>Disaster Intel SG</span>
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Direct Test SMS Sender Tool */}
+                <form onSubmit={sendAdminTestSMS} className="pt-3 border-t border-zinc-800/80 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono text-zinc-300">
+                    <span className="flex items-center gap-1">
+                      <Smartphone className="h-3 w-3 text-cyan-400" /> Test Single Phone
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="tel"
+                      required
+                      placeholder="+919876543210"
+                      value={testPhone}
+                      onChange={e => setTestPhone(e.target.value)}
+                      className="input-control text-xs py-1.5 flex-1"
+                    />
+                    <button
+                      type="submit"
+                      disabled={testSending || !testPhone.trim()}
+                      className="btn-secondary text-xs py-1.5 px-3 shrink-0"
+                    >
+                      {testSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5 text-cyan-400" />}
+                      Send
+                    </button>
+                  </div>
+                </form>
               </div>
-              <button
-                type="submit"
-                disabled={testSending || !testPhone.trim()}
-                className="btn-secondary text-xs py-2 px-4 w-full"
-              >
-                {testSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5 text-red-400" />}
-                {testSending ? 'Sending Test...' : 'Send Test SMS'}
-              </button>
-            </form>
+            </div>
           </div>
+
 
           {/* Subscribers Table */}
           <div className="card-panel overflow-hidden">

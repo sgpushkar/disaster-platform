@@ -25,6 +25,7 @@ export default function Alerts() {
   const [alerts, setAlerts] = useState([])
   const [filter, setFilter] = useState('ALL')
   const [sourceFilter, setSourceFilter] = useState('ALL')
+  const [typeFilter, setTypeFilter] = useState('ALL')
   const [search, setSearch] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -40,12 +41,22 @@ export default function Alerts() {
     .filter((a) => filter === 'ALL' || a.risk_level?.toUpperCase() === filter)
     .filter((a) => sourceFilter === 'ALL' || a.source?.toUpperCase() === sourceFilter)
     .filter((a) => {
+      if (typeFilter === 'ALL') return true
+      const dt = (a.disaster_type || 'flood').toLowerCase()
+      const titleLower = (a.title || '').toLowerCase()
+      if (typeFilter === 'CYCLONE') return dt.includes('cyclone') || titleLower.includes('cyclone')
+      if (typeFilter === 'RAINFALL') return dt.includes('rainfall') || dt.includes('rain') || titleLower.includes('rain')
+      if (typeFilter === 'FLOOD') return dt.includes('flood') || titleLower.includes('flood')
+      return true
+    })
+    .filter((a) => {
       const searchLower = search.toLowerCase()
       return (
         (a.message?.toLowerCase().includes(searchLower)) ||
         (a.title?.toLowerCase().includes(searchLower))
       )
     })
+
 
   const activeCount = alerts.filter(a => a.is_active).length
 
@@ -72,42 +83,69 @@ export default function Alerts() {
       <SMSAlertSubscriber />
 
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        {/* Severity filter */}
-        <div className="flex items-center gap-1.5 flex-wrap text-xs">
-          {['ALL', 'CRITICAL', 'HIGH', 'MODERATE', 'LOW'].map((level) => (
-            <button
-              key={level}
-              onClick={() => setFilter(level)}
-              className={`px-3 py-1.5 rounded-lg font-mono font-medium transition-all ${
-                filter === level
-                  ? 'bg-red-600 text-white font-bold shadow-sm'
-                  : 'bg-slate-900 border border-slate-800 text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              {level}
-            </button>
-          ))}
+      <div className="space-y-2.5">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+          {/* Disaster Type filter buttons */}
+          <div className="flex items-center gap-1.5 flex-wrap text-xs">
+            <span className="text-[10px] font-mono text-zinc-500 uppercase mr-1">Hazard:</span>
+            {[
+              { id: 'ALL', label: 'All Hazards' },
+              { id: 'CYCLONE', label: '🌀 Cyclone' },
+              { id: 'RAINFALL', label: '🌧️ Heavy Rain' },
+              { id: 'FLOOD', label: '🌊 Flood' },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTypeFilter(t.id)}
+                className={`px-2.5 py-1 rounded-lg font-mono text-xs font-semibold transition-all ${
+                  typeFilter === t.id
+                    ? 'bg-red-600 text-white shadow-md shadow-red-600/30 font-bold'
+                    : 'bg-slate-900 border border-slate-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Source filter */}
+          <div className="flex items-center gap-1.5 text-xs ml-auto">
+            {['ALL', 'AI', 'ADMIN'].map((src) => (
+              <button
+                key={src}
+                onClick={() => setSourceFilter(src)}
+                className={`px-2.5 py-1 rounded-lg font-mono text-xs font-medium transition-all flex items-center gap-1 ${
+                  sourceFilter === src
+                    ? 'bg-slate-700 text-white font-bold'
+                    : 'bg-slate-900 border border-slate-800 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                {src === 'AI' && <Bot className="h-3 w-3" />}
+                {src === 'ADMIN' && <UserCog className="h-3 w-3" />}
+                {src}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Source filter */}
-        <div className="flex items-center gap-1.5 text-xs ml-auto">
-          {['ALL', 'AI', 'ADMIN'].map((src) => (
-            <button
-              key={src}
-              onClick={() => setSourceFilter(src)}
-              className={`px-3 py-1.5 rounded-lg font-mono font-medium transition-all flex items-center gap-1 ${
-                sourceFilter === src
-                  ? 'bg-red-600 text-white font-bold shadow-sm'
-                  : 'bg-slate-900 border border-slate-800 text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              {src === 'AI' && <Bot className="h-3 w-3" />}
-              {src === 'ADMIN' && <UserCog className="h-3 w-3" />}
-              {src}
-            </button>
-          ))}
-        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Severity filter */}
+          <div className="flex items-center gap-1.5 flex-wrap text-xs">
+            {['ALL', 'CRITICAL', 'HIGH', 'MODERATE', 'LOW'].map((level) => (
+              <button
+                key={level}
+                onClick={() => setFilter(level)}
+                className={`px-2.5 py-1 rounded-lg font-mono text-xs font-medium transition-all ${
+                  filter === level
+                    ? 'bg-zinc-100 text-zinc-900 font-bold shadow-sm'
+                    : 'bg-slate-900 border border-slate-800 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                {level}
+              </button>
+            ))}
+          </div>
+
 
         {/* Search */}
         <div className="relative">
@@ -121,6 +159,7 @@ export default function Alerts() {
           />
         </div>
       </div>
+    </div>
 
       {error && (
         <div className="card-panel p-3.5 border-red-500/30 bg-red-500/5 flex items-start gap-2 text-xs text-red-300">
@@ -162,6 +201,21 @@ export default function Alerts() {
                       {alert.risk_level}
                     </span>
 
+                    {/* Hazard Category Badge */}
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold border ${
+                      (alert.disaster_type === 'cyclone' || alert.title?.toLowerCase().includes('cyclone'))
+                        ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                        : (alert.disaster_type === 'heavy_rainfall' || alert.title?.toLowerCase().includes('rain'))
+                        ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                        : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                    }`}>
+                      {(alert.disaster_type === 'cyclone' || alert.title?.toLowerCase().includes('cyclone'))
+                        ? '🌀 Cyclone'
+                        : (alert.disaster_type === 'heavy_rainfall' || alert.title?.toLowerCase().includes('rain'))
+                        ? '🌧️ Heavy Rain'
+                        : '🌊 Flood'}
+                    </span>
+
                     {/* Source badge */}
                     <span className={`px-2 py-0.5 rounded text-[10px] font-mono border flex items-center gap-1 ${
                       alert.source === 'ai'
@@ -171,6 +225,7 @@ export default function Alerts() {
                       {alert.source === 'ai' ? <Bot className="h-2.5 w-2.5" /> : <UserCog className="h-2.5 w-2.5" />}
                       {alert.source === 'ai' ? 'Telemetry Sensor' : 'Command Broadcast'}
                     </span>
+
 
                     {alert.risk_score != null && (
                       <span className="text-[10px] font-mono text-slate-500">
