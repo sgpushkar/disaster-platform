@@ -31,15 +31,20 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('user')
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
+      const url = err.config?.url || ''
+      const isAuthEndpoint = url.includes('/login') || url.includes('/signup')
+      if (!isAuthEndpoint) {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('user')
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+          window.location.href = '/login'
+        }
       }
     }
     return Promise.reject(err)
   }
 )
+
 
 export async function checkApiHealth() {
   try {

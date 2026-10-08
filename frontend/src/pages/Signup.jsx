@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
-import { Activity, User, Mail, Lock, AlertTriangle, RefreshCw, WifiOff, ShieldCheck } from 'lucide-react'
+import { Activity, User, Mail, Lock, AlertTriangle, RefreshCw, WifiOff, ShieldCheck, Phone, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { API_BASE, checkApiHealth } from '../services/api.js'
 
@@ -24,7 +24,9 @@ function ServerStatus({ status }) {
 export default function Signup() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('Creating account...')
@@ -34,7 +36,8 @@ export default function Signup() {
   const navigate = useNavigate()
   const retryTimerRef = useRef(null)
   const countdownRef = useRef(null)
-  const formRef = useRef({ name: '', email: '', password: '' })
+  const formRef = useRef({ name: '', email: '', password: '', phone: '' })
+
 
   const pingServer = useCallback(async () => {
     setServerStatus('waking')
@@ -70,14 +73,14 @@ export default function Signup() {
     }, seconds * 1000)
   }, [pingServer])
 
-  const doSignup = useCallback(async (nameVal, emailVal, passwordVal) => {
+  const doSignup = useCallback(async (nameVal, emailVal, passwordVal, phoneVal = '') => {
     if (passwordVal.length < 8) {
       setError('Access password must be at least 8 characters.')
       return
     }
     setError('')
     setLoading(true)
-    setLoadingMsg('Creating account...')
+    setLoadingMsg('Creating account & registering for alerts...')
 
     const wakeTimer = setTimeout(() => {
       setLoadingMsg('Server is waking up (~30s on free-tier)...')
@@ -85,7 +88,7 @@ export default function Signup() {
     }, 4000)
 
     try {
-      await signup(nameVal, emailVal, passwordVal)
+      await signup(nameVal, emailVal, passwordVal, phoneVal)
       localStorage.setItem('remembered_email', emailVal)
       localStorage.setItem('remember_me', 'true')
       navigate('/dashboard')
@@ -112,9 +115,10 @@ export default function Signup() {
     clearTimeout(retryTimerRef.current)
     clearInterval(countdownRef.current)
     setRetryCountdown(0)
-    formRef.current = { name, email, password }
-    doSignup(name, email, password)
+    formRef.current = { name, email, password, phone }
+    doSignup(name, email, password, phone)
   }
+
 
   const handleManualRetry = () => {
     clearTimeout(retryTimerRef.current)
@@ -184,22 +188,54 @@ export default function Signup() {
           </div>
 
           <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-mono uppercase text-slate-400">Mobile Phone (for Emergency Alerts)</label>
+              <span className="text-[10px] font-mono text-emerald-400 font-semibold">⚡ SMS Broadcasts</span>
+            </div>
+            <div className="relative">
+              <Phone className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                id="signup-phone"
+                name="phone"
+                type="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => { setPhone(e.target.value); formRef.current.phone = e.target.value }}
+                className="input-control pl-9 text-xs"
+                placeholder="+91 98765 43210 (or 10-digit number)"
+              />
+            </div>
+            <p className="text-[10px] text-zinc-500">
+              Receives instant mobile alerts during cyclones, severe storms, &amp; flash floods.
+            </p>
+          </div>
+
+          <div className="space-y-1">
             <label className="text-xs font-mono uppercase text-slate-400">Access Key / Password</label>
             <div className="relative">
               <Lock className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 id="signup-password"
                 name="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 required
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); formRef.current.password = e.target.value }}
-                className="input-control pl-9 text-xs"
+                className="input-control pl-9 pr-9 text-xs"
                 placeholder="Minimum 8 characters"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(p => !p)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 p-1"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </button>
             </div>
           </div>
+
 
           <AnimatePresence mode="wait">
             {error && (

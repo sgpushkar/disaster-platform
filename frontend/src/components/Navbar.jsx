@@ -98,17 +98,25 @@ export default function Navbar() {
             Get App
           </Link>
 
+          {/* User profile toggle */}
           <div className="flex flex-col items-end">
-            <span className="text-xs font-medium text-zinc-200 truncate max-w-[120px] sm:max-w-none">
-              {user.name && !/pushkar/i.test(user.name) ? user.name : 'Operations Officer'}
+            <span className="text-xs font-semibold text-zinc-100 truncate max-w-[140px] sm:max-w-none">
+              {user.name || user.email || 'Operations Officer'}
             </span>
-            <span className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded ${
-              user.role === 'admin' 
-                ? 'text-red-400 bg-red-500/10 border border-red-500/25 font-bold' 
-                : 'text-zinc-400 bg-slate-800 border border-slate-700'
-            }`}>
-              {user.role}
-            </span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {user.phone && (
+                <span className="text-[9px] font-mono text-zinc-400 hidden sm:inline" title="SMS alerts active">
+                  📱 {user.phone}
+                </span>
+              )}
+              <span className={`text-[9px] font-mono uppercase px-1.5 py-0.2 rounded font-bold ${
+                user.role === 'admin' 
+                  ? 'text-red-400 bg-red-500/15 border border-red-500/30' 
+                  : 'text-zinc-400 bg-slate-800 border border-slate-700'
+              }`}>
+                {user.role}
+              </span>
+            </div>
           </div>
 
           <button
@@ -127,3 +135,4 @@ export default function Navbar() {
     </header>
   )
 }
+

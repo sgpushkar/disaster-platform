@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
-import { Activity, Mail, Lock, AlertTriangle, RefreshCw, Wifi, WifiOff, CheckCircle2 } from 'lucide-react'
+import { Activity, Mail, Lock, AlertTriangle, RefreshCw, Wifi, WifiOff, CheckCircle2, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { API_BASE, checkApiHealth } from '../services/api.js'
 
@@ -25,6 +25,7 @@ function ServerStatus({ status }) {
 export default function Login() {
   const [email, setEmail] = useState(() => localStorage.getItem('remembered_email') || '')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(() => localStorage.getItem('remember_me') !== 'false')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -188,16 +189,25 @@ export default function Login() {
               <input
                 id="login-password"
                 name="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); formRef.current.password = e.target.value }}
-                className="input-control pl-9 text-xs"
+                className="input-control pl-9 pr-9 text-xs"
                 placeholder="••••••••••••"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(p => !p)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 p-1"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </button>
             </div>
           </div>
+
 
           {/* Remember me & Quick Autofill Row */}
           <div className="flex items-center justify-between text-xs pt-0.5">
