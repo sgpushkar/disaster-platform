@@ -61,13 +61,20 @@ def is_provider_configured() -> bool:
 def format_alert_sms(alert: Alert) -> str:
     """
     Formats a concise, urgent emergency alert message suitable for SMS.
+    Supports cyclone, heavy rainfall, and flood warnings.
     """
     level_str = alert.risk_level.value if hasattr(alert.risk_level, "value") else str(alert.risk_level)
     loc = alert.location_name or "Your Area"
     action = alert.recommended_action or "Seek higher ground and follow local emergency orders."
+    dtype = (getattr(alert, "disaster_type", None) or "flood").lower()
 
-    # Keep under standard multi-part limit (~280 chars) for maximum reliability
-    headline = f"[DISASTER INTEL ALERT] {level_str.upper()} FLOOD WARNING for {loc}."
+    if "cyclone" in dtype:
+        headline = f"[DISASTER INTEL ALERT] {level_str.upper()} CYCLONE ALERT for {loc}."
+    elif "heavy_rainfall" in dtype or "rainfall" in dtype:
+        headline = f"[DISASTER INTEL ALERT] {level_str.upper()} HEAVY RAINFALL WARNING for {loc}."
+    else:
+        headline = f"[DISASTER INTEL ALERT] {level_str.upper()} FLOOD WARNING for {loc}."
+
     body = alert.title or alert.message[:120]
     rec = f"ACTION: {action}"
     footer = "Helpline: 112 / 1077. Stay safe."
@@ -81,14 +88,15 @@ def send_sms(
     alert_id: Optional[int] = None,
     risk_level: Optional[str] = None,
     db: Optional[Session] = None,
+    force_simulation: bool = False,
 ) -> Dict[str, Any]:
     """
     Sends an SMS message to a single recipient.
-    Uses Twilio if configured; otherwise logs and simulates delivery.
+    Uses Twilio if configured and force_simulation is False; otherwise logs and simulates delivery.
     Records delivery in SMSLog if a database session is provided.
     """
     formatted_to = sanitize_phone_number(to)
-    is_live = is_provider_configured()
+    is_live = is_provider_configured() and not force_simulation
 
     status = "simulated"
     provider_sid = None
@@ -132,12 +140,13 @@ def send_sms(
             error_msg = f"Network or provider exception: {str(exc)}"
             logger.exception(f"Exception sending SMS to {formatted_to}: {exc}")
     else:
-        # Developer Simulation Mode
-        provider_sid = f"sim_{uuid.uuid4().hex[:12]}"
+        # Developer Simulation / Mock Mode
+        provider_sid = f"mock_{uuid.uuid4().hex[:12]}"
         status = "simulated"
         logger.info(
-            f"[SMS SIMULATION] To: {formatted_to} | Status: simulated | Message: {message[:80]}..."
+            f"[MOCK SMS SYSTEM] To: {formatted_to} | Status: simulated | Message: {message[:80]}..."
         )
+
 
     # Persist in audit log if db session provided
     if db:

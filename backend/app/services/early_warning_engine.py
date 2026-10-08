@@ -90,10 +90,11 @@ def _should_deduplicate(
     risk_level: str,
     lat: Optional[float],
     lon: Optional[float],
+    disaster_type: Optional[str] = None,
 ) -> bool:
     """
     Returns True if we should skip creating a new alert because a recent
-    equivalent or higher-severity alert already exists.
+    equivalent or higher-severity alert of the same hazard type already exists.
     """
     if risk_level not in ("Moderate", "High", "Critical"):
         return True  # no alert needed for Low
@@ -105,6 +106,9 @@ def _should_deduplicate(
         Alert.is_active == True,
         Alert.source == AlertSourceEnum.ai,
     )
+
+    if disaster_type:
+        q = q.filter(Alert.disaster_type == disaster_type.lower())
 
     # Level hierarchy for comparison
     level_order = {"Low": 0, "Moderate": 1, "High": 2, "Critical": 3}
@@ -128,28 +132,21 @@ def evaluate_and_alert(
     lat: Optional[float] = None,
     lon: Optional[float] = None,
     location_name: Optional[str] = None,
+    disaster_type: Optional[str] = "flood",
 ) -> dict:
     """
     Evaluates risk and creates an alert if warranted.
-
-    Returns a dict with:
-        warning_issued    bool
-        warning_level     str
-        risk_score        float
-        risk_level        str
-        risk_trend        str
-        title             str | None
-        message           str | None
-        recommended_action str | None
-        alert_id          int | None
+    Supports 'flood', 'cyclone', and 'heavy_rainfall' disaster categories.
     """
     warning_level = _LEVEL_MAP.get(risk_level, "none")
+    dtype = (disaster_type or "flood").lower()
     result = {
         "warning_issued": False,
         "warning_level": warning_level,
         "risk_score": risk_score,
         "risk_level": risk_level,
         "risk_trend": risk_trend,
+        "disaster_type": dtype,
         "title": None,
         "message": None,
         "recommended_action": None,
@@ -159,14 +156,54 @@ def evaluate_and_alert(
     if risk_level not in ("Moderate", "High", "Critical"):
         return result
 
-    # Check deduplication
-    if _should_deduplicate(db, risk_level, lat, lon):
+    # Check deduplication scoped by disaster type
+    if _should_deduplicate(db, risk_level, lat, lon, dtype):
         return result
 
-    # Create alert
-    title = _TITLES[risk_level]
-    message = _MESSAGES[risk_level]
-    action = _ACTIONS[risk_level]
+
+    # Specialized titles, messages, and actions based on disaster type
+    if "cyclone" in dtype:
+        c_titles = {
+            "Moderate": "🌀 Cyclone Advisory — Elevated Winds",
+            "High": "🌪️ Severe Cyclonic Storm Warning",
+            "Critical": "🚨 Super Cyclonic Storm — Extreme Emergency",
+        }
+        c_messages = {
+            "Moderate": "Deep depression and gusty winds observed. Elevated cyclone risk in the region. Monitor IMD meteorological bulletins.",
+            "High": "Severe cyclonic system approaching. Gale-force winds (>65 km/h) and structural hazards anticipated. Secure windows and outdoor fixtures.",
+            "Critical": "EXTREMELY SEVERE CYCLONE IMMINENT. Catastrophic storm gusts, power line damage, and coastal surge expected. Evacuate to cyclone shelters now.",
+        }
+        c_actions = {
+            "Moderate": "Secure loose roofing and objects. Keep emergency lighting and battery-powered radio charged.",
+            "High": "Stay indoors away from windows. Disconnect non-critical electrical supplies. Stock clean drinking water.",
+            "Critical": "IMMEDIATE EVACUATION to designated pucca cyclone shelters. Do not venture outdoors under any circumstances.",
+        }
+        title = c_titles.get(risk_level, _TITLES[risk_level])
+        message = c_messages.get(risk_level, _MESSAGES[risk_level])
+        action = c_actions.get(risk_level, _ACTIONS[risk_level])
+    elif "rainfall" in dtype or "heavy_rainfall" in dtype:
+        r_titles = {
+            "Moderate": "🌧️ Heavy Rainfall Advisory (Yellow Alert)",
+            "High": "⛈️ Torrential Downpour & Flash Flood Warning (Orange Alert)",
+            "Critical": "🆘 Cloudburst & Extreme Rainfall Emergency (Red Alert)",
+        }
+        r_messages = {
+            "Moderate": "Continuous heavy precipitation detected (>30mm). Waterlogging reported in low-lying roadways and railway tracks.",
+            "High": "Intense torrential rainfall detected (>65mm). Widespread localized flooding and stormwater drain choking in progress.",
+            "Critical": "EXTREME CLOUDBURST PRECIPITATION (>100mm). Inundation of ground floors and rapid flash flooding underway.",
+        }
+        r_actions = {
+            "Moderate": "Avoid low-lying subways and underpasses. Plan commute with extreme caution.",
+            "High": "Move vehicles to elevated spots. Keep away from fallen electric cables and flooded manholes.",
+            "Critical": "MOVE TO UPPER FLOORS IMMEDIATELY. Avoid all travel. Contact emergency helpline 112 / 1077.",
+        }
+        title = r_titles.get(risk_level, _TITLES[risk_level])
+        message = r_messages.get(risk_level, _MESSAGES[risk_level])
+        action = r_actions.get(risk_level, _ACTIONS[risk_level])
+    else:
+        title = _TITLES[risk_level]
+        message = _MESSAGES[risk_level]
+        action = _ACTIONS[risk_level]
 
     # Append trend information
     if risk_trend == "RAPIDLY_INCREASING":
@@ -182,6 +219,7 @@ def evaluate_and_alert(
     alert = Alert(
         title=title,
         message=message,
+        disaster_type=dtype,
         risk_level=_risk_level_enum(risk_level),
         risk_score=risk_score,
         latitude=lat,
@@ -195,6 +233,7 @@ def evaluate_and_alert(
     db.add(alert)
     db.commit()
     db.refresh(alert)
+
 
     # Automatically dispatch emergency SMS to active subscribers for High/Critical warnings
     sms_stats = None
