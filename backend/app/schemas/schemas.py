@@ -11,6 +11,7 @@ class UserSignup(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     email: EmailStr
     password: str = Field(min_length=8, max_length=100)
+    phone: Optional[str] = Field(None, max_length=25)
 
 
 class UserLogin(BaseModel):
@@ -23,6 +24,7 @@ class UserOut(BaseModel):
     id: int
     name: str
     email: EmailStr
+    phone: Optional[str] = None
     role: str
     created_at: datetime
 
@@ -31,6 +33,15 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8, max_length=100)
+
+
+class UserRoleUpdate(BaseModel):
+    role: str = Field(..., pattern="^(admin|user)$")
 
 
 # ---------- Weather ----------
@@ -271,6 +282,7 @@ class DangerZoneOut(DangerZoneCreate):
 class AlertCreate(BaseModel):
     title: Optional[str] = None
     message: str
+    disaster_type: Optional[str] = Field("flood", description="Disaster type: flood | cyclone | heavy_rainfall | general")
     risk_level: str
     risk_score: Optional[float] = None
     latitude: Optional[float] = None
@@ -364,4 +376,9 @@ class SMSStatusOut(BaseModel):
 class SMSBroadcastRequest(BaseModel):
     message: str = Field(min_length=5, max_length=500)
     min_risk_level: Optional[str] = "High"
+    risk_level: Optional[str] = None
     location_name: Optional[str] = None
+    target_audience: Optional[str] = Field("both", description="Target audience: 'users' | 'subscribers' | 'both'")
+    disaster_type: Optional[str] = Field("flood", description="Disaster type: flood | cyclone | heavy_rainfall | general")
+    mock_mode: Optional[bool] = Field(False, description="Whether to force simulated mock SMS dispatch")
+

@@ -14,11 +14,28 @@ from app.core.database import Base, engine
 from app.models import models  # noqa: F401 - ensures models are registered before create_all
 from app.routers import auth, weather, predict, dashboard, admin, reports, risk, safety, evacuation, warnings, sms
 
-# Create all tables on startup (SQLite or PostgreSQL)
+# Create all tables and ensure columns on startup (SQLite or PostgreSQL)
 try:
     Base.metadata.create_all(bind=engine)
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    try:
+        user_cols = [c["name"] for c in inspector.get_columns("users")]
+        if "phone" not in user_cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(30)"))
+    except Exception as e:
+        print(f"Users table migration note: {e}")
+
+    try:
+        alert_cols = [c["name"] for c in inspector.get_columns("alerts")]
+        if "disaster_type" not in alert_cols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE alerts ADD COLUMN disaster_type VARCHAR(50) DEFAULT 'flood'"))
+    except Exception as e:
+        print(f"Alerts table migration note: {e}")
 except Exception as exc:
-    print(f"Warning: Could not create tables on initial startup: {exc}")
+    print(f"Warning: Could not create/verify tables on startup: {exc}")
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
@@ -85,13 +102,17 @@ def seed_admin_users():
             pushkar = User(
                 name="Pushkar Mhatre",
                 email="pushkarmhatre424@gmail.com",
+                phone="+919876543210",
                 password=hash_password("password123"),
                 role=RoleEnum.admin,
             )
             db.add(pushkar)
         else:
             pushkar.role = RoleEnum.admin
-            pushkar.password = hash_password("password123")
+            if not pushkar.phone:
+                pushkar.phone = "+919876543210"
+            if not pushkar.password:
+                pushkar.password = hash_password("password123")
 
         # Ensure Srushti admin exists
         srushti = db.query(User).filter(User.email == "srushti@disaster-intel.gov").first()

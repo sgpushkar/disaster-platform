@@ -43,6 +43,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     email = Column(String(150), unique=True, index=True, nullable=False)
+    phone = Column(String(30), nullable=True, index=True)
     password = Column(String(255), nullable=False)  # bcrypt hash, never plaintext
     role = Column(Enum(RoleEnum), default=RoleEnum.user, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -119,6 +120,7 @@ class Alert(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), nullable=True)          # short headline
     message = Column(String(1000), nullable=False)
+    disaster_type = Column(String(50), default="flood", nullable=True)  # 'flood' | 'cyclone' | 'heavy_rainfall' | 'general'
     risk_level = Column(Enum(RiskLevelEnum), nullable=False)
     risk_score = Column(Float, nullable=True)           # numeric score at time of alert
     latitude = Column(Float, nullable=True)
