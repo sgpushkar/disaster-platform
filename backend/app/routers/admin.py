@@ -8,11 +8,11 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import require_admin
 from app.models.models import (
-    User, Prediction, WeatherData, EmergencyLocation, Alert,
+    User, RoleEnum, Prediction, WeatherData, EmergencyLocation, Alert,
     RiskLevelEnum, AlertSourceEnum, RiskSnapshot, DangerZone
 )
 from app.schemas.schemas import (
-    UserOut, RiskPredictionOut, WeatherOut, EmergencyLocationOut,
+    UserOut, UserRoleUpdate, RiskPredictionOut, WeatherOut, EmergencyLocationOut,
     EmergencyLocationCreate, AlertOut, AlertCreate, RiskSnapshotOut,
 )
 
@@ -22,6 +22,27 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/users", response_model=list[UserOut])
 def list_users(db: Session = Depends(get_db), _admin=Depends(require_admin)):
     return db.query(User).all()
+
+
+@router.patch("/users/{user_id}/role", response_model=UserOut)
+@router.put("/users/{user_id}/role", response_model=UserOut)
+def update_user_role(
+    user_id: int,
+    payload: UserRoleUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    if user_id == admin.id and payload.role != "admin":
+        raise HTTPException(status_code=400, detail="Cannot revoke your own admin status")
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    target_user.role = RoleEnum.admin if payload.role == "admin" else RoleEnum.user
+    db.commit()
+    db.refresh(target_user)
+    return target_user
 
 
 @router.delete("/users/{user_id}")
@@ -96,8 +117,9 @@ def create_alert(payload: AlertCreate, db: Session = Depends(get_db), _admin=Dep
         longitude=payload.longitude,
         location_name=payload.location_name,
         recommended_action=payload.recommended_action,
-        expires_at=payload.expires_at,
+        disaster_type=payload.disaster_type or "flood",
         source=AlertSourceEnum.admin,
+        expires_at=payload.expires_at,
         is_active=True,
     )
     db.add(alert)
