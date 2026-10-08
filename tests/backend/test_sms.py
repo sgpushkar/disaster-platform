@@ -121,3 +121,109 @@ def test_sms_logs_and_subscribers_endpoint(client, db_session):
     logs_res = client.get("/sms/logs")
     assert logs_res.status_code == 200
     assert len(logs_res.json()) > 0
+
+
+def test_cyclone_and_heavy_rainfall_early_warning_alerts(db_session):
+    sub = SMSSubscriber(
+        phone_number="+919876543999",
+        name="Coastal Resident",
+        location_name="Ratnagiri",
+        min_risk_level="High",
+        is_active=True,
+    )
+    sub_mumbai = SMSSubscriber(
+        phone_number="+919876543888",
+        name="Mumbai Resident",
+        location_name="Mumbai",
+        min_risk_level="High",
+        is_active=True,
+    )
+    db_session.add_all([sub, sub_mumbai])
+    db_session.commit()
+
+    # Cyclone alert
+    res_cyclone = evaluate_and_alert(
+        db=db_session,
+        risk_score=85.0,
+        risk_level="Critical",
+        risk_trend="RAPID_RISE",
+        lat=16.99,
+        lon=73.30,
+        location_name="Ratnagiri Port",
+        disaster_type="cyclone"
+    )
+    assert res_cyclone["warning_issued"] is True
+    assert res_cyclone["disaster_type"] == "cyclone"
+    assert "CYCLON" in res_cyclone["title"].upper()
+    assert res_cyclone["sms_dispatched"] is True
+
+    # Check alert in database
+    cyclone_alert = db_session.query(Alert).filter(Alert.id == res_cyclone["alert_id"]).first()
+    assert cyclone_alert is not None
+    assert cyclone_alert.disaster_type == "cyclone"
+
+    # Heavy rainfall alert
+    res_rain = evaluate_and_alert(
+        db=db_session,
+        risk_score=72.0,
+        risk_level="High",
+        risk_trend="INCREASING",
+        lat=19.07,
+        lon=72.87,
+        location_name="Mumbai Suburbs",
+        disaster_type="heavy_rainfall"
+    )
+    assert res_rain["warning_issued"] is True
+    assert res_rain["disaster_type"] == "heavy_rainfall"
+    assert any(w in res_rain["title"].upper() for w in ("DOWNPOUR", "RAINFALL", "RAIN"))
+    assert res_rain["sms_dispatched"] is True
+
+    rain_alert = db_session.query(Alert).filter(Alert.id == res_rain["alert_id"]).first()
+    assert rain_alert is not None
+    assert rain_alert.disaster_type == "heavy_rainfall"
+
+
+def test_admin_broadcast_mock_mode_and_target_audience(client, db_session):
+    # Create admin user
+    resp = client.post("/signup", json={
+        "name": "Broadcast Admin",
+        "email": "broadcastadmin@example.com",
+        "password": "password123",
+        "phone": "9812300001"
+    })
+    token = resp.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Also register another user with phone
+    client.post("/signup", json={
+        "name": "Citizen Phone",
+        "email": "citizen@example.com",
+        "password": "password123",
+        "phone": "9812300002"
+    })
+
+    # Broadcast cyclone mock alert
+    broadcast_resp = client.post("/sms/broadcast", headers=headers, json={
+        "message": "URGENT: Cyclone Alert. Seek cyclone shelters immediately.",
+        "risk_level": "Critical",
+        "location_name": "Alibaug",
+        "disaster_type": "cyclone",
+        "target_audience": "both",
+        "mock_mode": True
+    })
+    assert broadcast_resp.status_code == 200
+    data = broadcast_resp.json()
+    assert data["total_attempted"] >= 2
+    assert data["simulated"] >= 2
+    assert data["target_audience"] == "both"
+    assert data["disaster_type"] == "cyclone"
+    assert data["is_mock"] is True
+
+    # Check alert table record was created
+    created_alert = db_session.query(Alert).filter(Alert.location_name == "Alibaug").first()
+    assert created_alert is not None
+    assert created_alert.disaster_type == "cyclone"
+    assert created_alert.risk_level == RiskLevelEnum.critical
+
+
+

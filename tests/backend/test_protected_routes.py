@@ -71,3 +71,41 @@ def test_current_risk_returns_dataset_benchmarks(client):
     if data.get("dataset_benchmarks"):
         assert data["dataset_benchmarks"]["total_records"] == 61368
 
+
+def test_admin_can_update_user_role_and_self_demote_prevented(client):
+    admin_token, admin_user = _signup_and_token(client, email="headadmin@example.com")
+    admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+    # Create normal user
+    _, normal_user = _signup_and_token(client, email="cadet@example.com")
+    assert normal_user["role"] == "user"
+
+    # Promote normal user to admin
+    promote_resp = client.patch(
+        f"/admin/users/{normal_user['id']}/role",
+        headers=admin_headers,
+        json={"role": "admin"}
+    )
+    assert promote_resp.status_code == 200
+    assert promote_resp.json()["role"] == "admin"
+
+    # Demote user back to user
+    demote_resp = client.put(
+        f"/admin/users/{normal_user['id']}/role",
+        headers=admin_headers,
+        json={"role": "user"}
+    )
+    assert demote_resp.status_code == 200
+    assert demote_resp.json()["role"] == "user"
+
+    # Admin trying to demote themselves should be blocked with 400
+    self_demote_resp = client.patch(
+        f"/admin/users/{admin_user['id']}/role",
+        headers=admin_headers,
+        json={"role": "user"}
+    )
+    assert self_demote_resp.status_code == 400
+    assert "cannot revoke your own admin status" in self_demote_resp.json()["detail"].lower()
+
+
+
