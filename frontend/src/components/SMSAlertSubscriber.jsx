@@ -80,9 +80,12 @@ export default function SMSAlertSubscriber() {
         phone_number: targetPhone,
       })
       const result = res.data.result
+      const isTrial = result.is_trial_restricted
       setFeedback({
-        type: 'info',
-        message: `Test SMS dispatched to ${result.recipient}! Provider: ${result.provider} (Status: ${result.status.toUpperCase()}).`,
+        type: isTrial ? 'warning' : 'info',
+        message: isTrial
+          ? `Dispatched to ${result.recipient}! (Note: Twilio Free Trial delivered stock template because trial accounts restrict custom SMS bodies. Upgrade Twilio for custom disaster text).`
+          : `Test SMS dispatched to ${result.recipient}! Provider: ${result.provider} (Status: ${result.status.toUpperCase()}).`,
       })
       fetchSMSStatus()
     } catch (err) {

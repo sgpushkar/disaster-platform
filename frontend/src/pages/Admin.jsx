@@ -215,7 +215,14 @@ export default function Admin() {
         mock_mode: mockSmsMode,
       })
       const totalSent = r.data.sent + r.data.simulated
-      showFeedback('success', `Emergency SMS dispatched to ${totalSent} recipients (${r.data.is_mock ? 'Mock Simulation Mode' : 'Live Gateway'}).`)
+      if (r.data.trial_restricted_count > 0) {
+        showFeedback(
+          'error',
+          `⚠️ Twilio Trial Limitation: ${r.data.trial_restricted_count} SMS delivered via stock trial template because free trial accounts block custom message bodies (Error 572006). Upgrade to a paid Twilio account for custom text, or toggle Mock Simulation Mode on!`
+        )
+      } else {
+        showFeedback('success', `Emergency SMS dispatched to ${totalSent} recipients (${r.data.is_mock ? 'Mock Simulation Mode' : 'Live Gateway'}).`)
+      }
       setLastDispatchedSms({
         message: broadcastMessage.trim(),
         type: selectedHazard,
@@ -239,8 +246,28 @@ export default function Admin() {
     if (!testPhone.trim()) return
     setTestSending(true)
     try {
-      const r = await api.post('/sms/test', { phone_number: testPhone.trim() })
-      showFeedback('success', `Test SMS dispatched to ${r.data.result.recipient} (${r.data.result.status}).`)
+      const r = await api.post('/sms/test', {
+        phone_number: testPhone.trim(),
+        message: broadcastMessage.trim() || undefined,
+        mock_mode: mockSmsMode,
+      })
+      const resData = r.data.result
+      if (resData?.is_trial_restricted) {
+        showFeedback(
+          'error',
+          `⚠️ Twilio Free Trial Notice: Delivered stock template to ${resData.recipient}. Twilio trial accounts reject custom SMS bodies (Error 572006). Upgrade Twilio for custom text, or toggle Mock Mode to test custom alerts!`
+        )
+      } else {
+        showFeedback('success', `Test SMS dispatched to ${resData.recipient} (${resData.status}) via ${resData.provider}.`)
+      }
+      setLastDispatchedSms({
+        message: broadcastMessage.trim() || '[Test Alert]',
+        type: selectedHazard,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        count: 1,
+        isMock: resData.status === 'simulated',
+        audience: 'Single Test Device',
+      })
       loadSMSData()
     } catch (err) {
       showFeedback('error', err.response?.data?.detail || 'Test SMS failed')
@@ -681,6 +708,47 @@ export default function Admin() {
                   </span>
                 </label>
               </div>
+
+              {/* Twilio Free Trial Notice */}
+              {!mockSmsMode && (
+                <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs text-amber-200 flex items-start gap-2.5">
+                  <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-semibold text-amber-300">
+                      Twilio Free Trial Active — Why phones receive test appointment messages:
+                    </p>
+                    <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                      Twilio trial accounts strictly restrict cellular SMS to Twilio's predefined sandbox templates (e.g. appointment reminders) and block custom message bodies (Twilio Error 572006). To deliver custom disaster text to phones, the Twilio account must be upgraded on twilio.com.
+                    </p>
+                    <div className="pt-0.5 flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-mono text-amber-300 font-bold">
+                        👉 To test 100% custom alert text without upgrading:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setMockSmsMode(true)}
+                        className="px-2.5 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-200 transition-all cursor-pointer"
+                      >
+                        Switch to Mock Simulation Mode
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {mockSmsMode && (
+                <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-200 flex items-start gap-2.5">
+                  <Smartphone className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-emerald-300">
+                      Mock Simulation Mode Active (100% Custom Alert Delivery)
+                    </p>
+                    <p className="text-[11px] text-emerald-200/90 leading-relaxed">
+                      Custom cyclone, rainfall, and flood messages are dispatched instantly without Twilio trial restrictions. Transmissions are logged to audit records and previewed in real time on the smartphone simulator below.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* 1-Click Disaster Alert Presets */}
               <div className="space-y-1.5">
