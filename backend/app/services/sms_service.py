@@ -127,7 +127,10 @@ def send_sms(
                         data = retry_res.json()
                         status = "delivered"
                         provider_sid = data.get("sid")
-                        error_msg = "Delivered via Twilio trial template. (Upgrade Twilio to enable custom disaster alert text)."
+                        error_msg = (
+                            "Twilio Trial Restriction (Error 572006): Delivered via Twilio sandbox template "
+                            "('sms_appointment_reminders'). Twilio trial accounts prohibit custom text bodies until upgraded."
+                        )
                     else:
                         status = "failed"
                         error_msg = f"Twilio HTTP {retry_res.status_code}: {retry_res.text}"
@@ -146,7 +149,6 @@ def send_sms(
         logger.info(
             f"[MOCK SMS SYSTEM] To: {formatted_to} | Status: simulated | Message: {message[:80]}..."
         )
-
 
     # Persist in audit log if db session provided
     if db:
@@ -173,6 +175,7 @@ def send_sms(
         "provider": "Twilio Live" if is_live else "Simulation Mode",
         "provider_sid": provider_sid,
         "error": error_msg,
+        "is_trial_restricted": bool(error_msg and "572006" in error_msg),
     }
 
 

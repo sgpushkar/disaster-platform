@@ -128,7 +128,13 @@ def test_sms(payload: SMSTestRequest, db: Session = Depends(get_db)):
         "Your phone is set up to receive instant emergency flood broadcasts."
     )
 
-    res = send_sms(to=cleaned_phone, message=test_body, risk_level="Low", db=db)
+    res = send_sms(
+        to=cleaned_phone,
+        message=test_body,
+        risk_level="Low",
+        db=db,
+        force_simulation=bool(payload.mock_mode),
+    )
     return {
         "detail": "Test SMS dispatched successfully",
         "result": res,
@@ -255,7 +261,11 @@ def broadcast_sms(payload: SMSBroadcastRequest, db: Session = Depends(get_db)):
             "status": res["status"],
             "provider": res["provider"],
             "provider_sid": res.get("provider_sid"),
+            "error": res.get("error"),
+            "is_trial_restricted": res.get("is_trial_restricted", False),
         })
+
+    trial_restricted_count = sum(1 for d in delivery_records if d.get("is_trial_restricted"))
 
     return {
         "detail": "Emergency SMS broadcast completed",
@@ -267,6 +277,8 @@ def broadcast_sms(payload: SMSBroadcastRequest, db: Session = Depends(get_db)):
         "target_audience": target_aud,
         "alert_id": alert_rec.id,
         "is_mock": force_sim or not is_provider_configured(),
+        "trial_restricted_count": trial_restricted_count,
         "deliveries": delivery_records,
     }
+
 

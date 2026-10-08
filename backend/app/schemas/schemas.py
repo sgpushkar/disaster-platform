@@ -363,6 +363,8 @@ class SMSLogOut(BaseModel):
 class SMSTestRequest(BaseModel):
     phone_number: str = Field(min_length=7, max_length=20)
     message: Optional[str] = None
+    mock_mode: Optional[bool] = False
+
 
 
 class SMSStatusOut(BaseModel):
