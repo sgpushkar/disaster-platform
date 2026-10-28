@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { 
   LayoutDashboard, 
@@ -10,8 +10,12 @@ import {
   LogOut, 
   ShieldAlert,
   Shield,
-  Download
+  Download,
+  Menu,
+  X,
+  Smartphone
 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext.jsx'
 
 const navItems = [
@@ -19,7 +23,7 @@ const navItems = [
   { label: 'Risk Analysis', path: '/predict', icon: Activity },
   { label: 'GIS Map', path: '/map', icon: Map },
   { label: 'Safe Areas', path: '/safe-areas', icon: Shield },
-  { label: 'Alerts', path: '/alerts', icon: Bell },
+  { label: 'Alerts & SMS', path: '/alerts', icon: Bell },
   { label: 'Reports', path: '/reports', icon: FileSpreadsheet },
 ]
 
@@ -27,6 +31,12 @@ export default function Navbar() {
   const { user, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Auto-close mobile drawer on route change
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
 
   if (!user) return null
 
@@ -100,13 +110,14 @@ export default function Navbar() {
 
           {/* User profile toggle */}
           <div className="flex flex-col items-end">
-            <span className="text-xs font-semibold text-zinc-100 truncate max-w-[140px] sm:max-w-none">
+            <span className="text-xs font-semibold text-zinc-100 truncate max-w-[120px] sm:max-w-none">
               {user.name || user.email || 'Operations Officer'}
             </span>
             <div className="flex items-center gap-1.5 mt-0.5">
               {user.phone && (
-                <span className="text-[9px] font-mono text-zinc-400 hidden sm:inline" title="SMS alerts active">
-                  📱 {user.phone}
+                <span className="text-[9px] font-mono text-emerald-400 flex items-center gap-0.5" title="SMS alerts active">
+                  <Smartphone className="h-2.5 w-2.5" />
+                  <span className="hidden xs:inline">{user.phone}</span>
                 </span>
               )}
               <span className={`text-[9px] font-mono uppercase px-1.5 py-0.2 rounded font-bold ${
@@ -130,8 +141,86 @@ export default function Navbar() {
             <LogOut className="h-4 w-4" />
             <span className="hidden sm:inline">Logout</span>
           </button>
+
+          {/* Mobile Menu Hamburger Toggle */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(prev => !prev)}
+            className="md:hidden p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-zinc-300 hover:text-white border border-slate-800 transition-colors flex items-center justify-center"
+            aria-label="Toggle navigation menu"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5 text-red-400" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Drawer / Dropdown Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="md:hidden border-t border-slate-800/80 bg-slate-950/98 backdrop-blur-2xl overflow-hidden px-4 py-3 space-y-3 shadow-2xl"
+          >
+            {/* Quick SMS status badge */}
+            <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-mono text-emerald-300 font-semibold">
+                  {user.phone ? `📱 SMS Registered: ${user.phone}` : '📱 Cellular SMS Alerts'}
+                </span>
+              </div>
+              <Link
+                to="/alerts"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-[10px] font-mono text-white bg-emerald-600 hover:bg-emerald-500 px-2 py-0.5 rounded font-bold"
+              >
+                Config SMS →
+              </Link>
+            </div>
+
+            {/* All navigation links grid */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {[
+                { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+                { label: 'Risk Analysis', path: '/predict', icon: Activity },
+                { label: 'GIS Tactical Map', path: '/map', icon: Map },
+                { label: 'Safe Area Finder', path: '/safe-areas', icon: Shield },
+                { label: 'Alerts & SMS', path: '/alerts', icon: Bell, badge: 'SMS' },
+                { label: 'Reports Export', path: '/reports', icon: FileSpreadsheet },
+                { label: 'Install App (APK)', path: '/download', icon: Download },
+                ...(user.role === 'admin' ? [{ label: 'Admin Console', path: '/admin', icon: ShieldCheck, admin: true }] : [])
+              ].map((item) => {
+                const Icon = item.icon
+                const active = location.pathname === item.path
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all ${
+                      active
+                        ? 'bg-red-500/15 text-white border-red-500/40 font-semibold shadow-sm'
+                        : item.admin
+                        ? 'bg-slate-900 border-red-500/30 text-red-400 hover:bg-slate-800'
+                        : 'bg-slate-900/80 border-slate-800/80 text-zinc-300 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-red-400' : 'text-zinc-400'}`} />
+                    <span className="truncate flex-1">{item.label}</span>
+                    {item.badge && (
+                      <span className="text-[9px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1 rounded">
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   )
 }

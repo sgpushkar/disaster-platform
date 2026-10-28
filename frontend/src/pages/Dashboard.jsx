@@ -277,6 +277,44 @@ export default function Dashboard() {
         />
       )}
 
+      {/* ── Emergency SMS Broadcast & Alert Dispatch Quick Card ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.04 }}
+        className="card-panel p-4 sm:p-5 border border-emerald-500/25 bg-gradient-to-r from-emerald-950/20 via-slate-900 to-slate-950 shadow-lg shadow-emerald-950/10"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
+              <Smartphone className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">
+                  Emergency Cellular SMS Alert Network
+                </h3>
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  SMS ACTIVE
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Instant SMS hazard broadcasts delivered directly to mobile phones when High or Critical disaster alerts trigger.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <Link
+              to="/alerts"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white font-mono flex items-center gap-1.5 shadow-sm transition-all"
+            >
+              <Smartphone className="h-3.5 w-3.5" />
+              Manage SMS Alerts →
+            </Link>
+          </div>
+        </div>
+      </motion.div>
+
       {/* ── Risk + Weather hero ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
@@ -574,11 +612,12 @@ export default function Dashboard() {
       <motion.div
         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
       >
         {[
           { to: '/safe-areas', icon: MapPin, label: 'Safe Area Finder', desc: 'Ranked emergency shelters & trauma centers', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/25 hover:border-emerald-500/50' },
-          { to: '/map', icon: Waves, label: 'GIS Tactical Map', desc: 'Danger zone perimeters & road routes', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/25 hover:border-red-500/50' },
+          { to: '/map', icon: Waves, label: 'GIS Tactical Map', desc: 'Danger zone perimeters & road routes', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/25 hover:border-blue-500/50' },
+          { to: '/alerts', icon: Smartphone, label: 'Emergency SMS Network', desc: 'Cellular alerts to citizens & dispatchers', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/25 hover:border-emerald-500/50' },
           { to: '/alerts', icon: Bell, label: 'Incident Advisory Log', desc: `${data?.active_warnings_count ?? 0} active · tap to inspect`, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/25 hover:border-red-500/50' },
         ].map(({ to, icon: Icon, label, desc, color, bg }) => (
           <Link key={to} to={to}

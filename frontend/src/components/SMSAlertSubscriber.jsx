@@ -123,11 +123,12 @@ export default function SMSAlertSubscriber() {
 
   const LOCATIONS = [
     'All Regions',
-    'Pune',
+    'Navi Mumbai',
     'Mumbai',
+    'Pune',
+    'Thane',
     'Nashik',
     'Nagpur',
-    'Thane',
     'Kolhapur',
   ]
 
