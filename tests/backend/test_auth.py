@@ -53,8 +53,8 @@ def test_signup_password_too_short_rejected(client):
 def test_signup_with_phone_stores_phone_and_subscriber(client, db_session):
     from app.models.models import SMSSubscriber
     resp = client.post("/signup", json={
-        "name": "Pushkar Mhatre",
-        "email": "pushkar@example.com",
+        "name": "Alex Morgan",
+        "email": "alex.morgan@example.com",
         "password": "securepassword123",
         "phone": "9876543210"
     })

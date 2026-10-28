@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import {
   MapPin, Navigation, Shield, Clock, Star, ArrowRight,
@@ -37,9 +37,22 @@ const userIcon = L.divIcon({
   iconSize: [18, 18], iconAnchor: [9, 9],
 })
 
-function MapUpdater({ center }) {
+function MapUpdater({ center, results, selected }) {
   const map = useMap()
-  useEffect(() => { if (center) map.setView(center, 13, { animate: true }) }, [center])
+  useEffect(() => {
+    if (selected?.location?.latitude != null && selected?.location?.longitude != null) {
+      map.flyTo([selected.location.latitude, selected.location.longitude], 15, { duration: 1.0 })
+    } else if (results && results.length > 0) {
+      const points = results.map(r => [r.location.latitude, r.location.longitude])
+      if (center) points.push(center)
+      try {
+        const bounds = L.latLngBounds(points)
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 })
+      } catch (_) {}
+    } else if (center) {
+      map.setView(center, 13, { animate: true })
+    }
+  }, [center, results, selected, map])
   return null
 }
 
@@ -55,19 +68,28 @@ export default function SafeAreas() {
   const [route, setRoute] = useState(null)
   const [routeLoading, setRouteLoading] = useState(false)
   const [mapStyle, setMapStyle] = useState('streets')
+  const [radiusKm, setRadiusKm] = useState(25)
 
-  const fetchSafeAreas = useCallback(async (lat, lon) => {
+  const fetchSafeAreas = useCallback(async (lat, lon, rKm) => {
+    const effectiveRadius = rKm || radiusKm || 25
     setLoading(true)
     setError('')
     try {
-      const { data } = await api.get('/safety/nearby', { params: { lat, lon, radius_km: 15 } })
+      const { data } = await api.get('/safety/nearby', { params: { lat, lon, radius_km: effectiveRadius, limit: 15 } })
       setResults(data.results || [])
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to load safe areas. Make sure locations are seeded.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [radiusKm])
+
+  const handleRadiusChange = (newR) => {
+    setRadiusKm(newR)
+    if (userLoc) {
+      fetchSafeAreas(userLoc.lat, userLoc.lon, newR)
+    }
+  }
 
   useEffect(() => {
     const applyLocation = (loc) => {
@@ -148,16 +170,36 @@ export default function SafeAreas() {
             Nearest shelters, hospitals & safe zones — ranked by distance, destination risk, and capacity.
           </p>
         </div>
-        {userLoc && (
-          <button
-            onClick={() => fetchSafeAreas(userLoc.lat, userLoc.lon)}
-            disabled={loading}
-            className="btn-secondary text-xs py-1.5 px-3"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        )}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-1 text-xs font-mono">
+            <span className="text-zinc-500 px-2">Radar:</span>
+            {[15, 25, 50, 100].map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => handleRadiusChange(r)}
+                className={`px-2.5 py-1 rounded text-xs font-mono transition-all ${
+                  radiusKm === r
+                    ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                {r} km
+              </button>
+            ))}
+          </div>
+
+          {userLoc && (
+            <button
+              onClick={() => fetchSafeAreas(userLoc.lat, userLoc.lon, radiusKm)}
+              disabled={loading}
+              className="btn-secondary text-xs py-1.5 px-3"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -385,7 +427,13 @@ export default function SafeAreas() {
                   />
                 </>
               )}
-              {userLoc && <MapUpdater center={[userLoc.lat, userLoc.lon]} />}
+              {userLoc && (
+                <MapUpdater
+                  center={[userLoc.lat, userLoc.lon]}
+                  results={results}
+                  selected={selected}
+                />
+              )}
 
               {/* User location */}
               {userLoc && (
@@ -399,30 +447,63 @@ export default function SafeAreas() {
                 </Marker>
               )}
 
-              {/* Safe area markers */}
+              {/* Safe area markers & perimeter circles */}
               {results.map((result, i) => {
                 const typeCfg = TYPE_ICONS[result.location.type] || TYPE_ICONS.shelter
                 const letter = result.location.name[0].toUpperCase()
+                const isSelected = selected?.location?.id === result.location.id
+                const isTopSafety = i === 0
                 return (
-                  <Marker
-                    key={result.location.id}
-                    position={[result.location.latitude, result.location.longitude]}
-                    icon={createPinIcon(i === 0 ? '#10b981' : typeCfg.color, letter)}
-                  >
-                    <Popup>
-                      <div className="space-y-1 min-w-[160px]">
-                        <p className="font-bold text-white text-sm">{result.location.name}</p>
-                        <p className="text-[11px] font-mono text-slate-400">{typeCfg.label}</p>
-                        <div className="flex gap-2 text-[11px] font-mono text-slate-300">
-                          <span>📏 {result.distance_km} km</span>
-                          <span>🛡️ {result.safety_score}/100</span>
+                  <React.Fragment key={result.location.id}>
+                    {/* Visual Safe Area Perimeter Circle */}
+                    <Circle
+                      center={[result.location.latitude, result.location.longitude]}
+                      radius={result.location.type === 'safe_zone' ? 650 : 380}
+                      pathOptions={{
+                        color: isSelected ? '#3b82f6' : (isTopSafety ? '#10b981' : '#06b6d4'),
+                        fillColor: isSelected ? '#3b82f6' : (isTopSafety ? '#10b981' : '#06b6d4'),
+                        fillOpacity: isSelected ? 0.28 : 0.16,
+                        weight: isSelected ? 2.5 : 1.5,
+                        dashArray: result.location.type === 'safe_zone' ? '6 4' : null,
+                      }}
+                    />
+                    <Marker
+                      position={[result.location.latitude, result.location.longitude]}
+                      icon={createPinIcon(isSelected ? '#3b82f6' : (isTopSafety ? '#10b981' : typeCfg.color), letter)}
+                      eventHandlers={{
+                        click: () => setSelected(result)
+                      }}
+                    >
+                      <Popup>
+                        <div className="space-y-1.5 min-w-[180px]">
+                          <div className="flex items-center justify-between gap-1 border-b border-slate-800 pb-1">
+                            <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase">{typeCfg.label}</span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300">
+                              🛡️ {result.safety_score}/100
+                            </span>
+                          </div>
+                          <p className="font-bold text-white text-sm">{result.location.name}</p>
+                          {result.location.description && (
+                            <p className="text-[11px] text-zinc-300">{result.location.description}</p>
+                          )}
+                          <div className="flex gap-2 text-[11px] font-mono text-slate-300">
+                            <span>📏 {result.distance_km} km</span>
+                            <span>⏱️ ~{result.estimated_minutes} min</span>
+                          </div>
+                          {result.location.contact && (
+                            <p className="text-[11px] text-red-400 font-mono">📞 {result.location.contact}</p>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => fetchRoute(result)}
+                            className="w-full mt-1.5 py-1 px-2 rounded bg-red-600 hover:bg-red-500 text-white font-mono text-xs font-semibold flex items-center justify-center gap-1"
+                          >
+                            <Navigation className="h-3 w-3" /> Trace Route
+                          </button>
                         </div>
-                        {result.location.contact && (
-                          <p className="text-[11px] text-red-400 font-mono">📞 {result.location.contact}</p>
-                        )}
-                      </div>
-                    </Popup>
-                  </Marker>
+                      </Popup>
+                    </Marker>
+                  </React.Fragment>
                 )
               })}
 

@@ -124,6 +124,7 @@ def get_nearby_safe_areas(
     user_lon: float,
     radius_km: float = 10.0,
     limit: int = 10,
+    fallback_if_empty: bool = False,
 ) -> list[dict]:
     """
     Returns a ranked list of nearby safe locations sorted by composite safety score.
@@ -158,6 +159,26 @@ def get_nearby_safe_areas(
     # Sort by safety score descending
     results.sort(key=lambda x: x["safety_score"], reverse=True)
     results = results[:limit]
+
+    # If requested and no locations are within radius_km, provide closest regional safe havens
+    # so operators always have actionable safe areas visible
+    if not results and all_locations and fallback_if_empty:
+        all_sorted = []
+        for loc in all_locations:
+            dist = _haversine_km(user_lat, user_lon, loc.latitude, loc.longitude)
+            all_sorted.append((dist, loc))
+        all_sorted.sort(key=lambda x: x[0])
+        for dist, loc in all_sorted[:limit]:
+            score = _composite_safety_score(dist, loc, max_radius_km=max(dist * 1.5, 50.0))
+            results.append({
+                "location": loc,
+                "distance_km": round(dist, 2),
+                "estimated_minutes": _travel_minutes(dist, loc.type),
+                "safety_score": score,
+                "destination_risk": loc.risk_level or "Low",
+                "reason": f"Nearest available refuge ({dist:.1f} km). Safety score: {score}/100.",
+            })
+        return results
 
     # Fill in rank-aware reason
     for i, r in enumerate(results):

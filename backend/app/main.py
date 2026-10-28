@@ -19,21 +19,37 @@ try:
     Base.metadata.create_all(bind=engine)
     from sqlalchemy import inspect, text
     inspector = inspect(engine)
-    try:
-        user_cols = [c["name"] for c in inspector.get_columns("users")]
-        if "phone" not in user_cols:
-            with engine.begin() as conn:
-                conn.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(30)"))
-    except Exception as e:
-        print(f"Users table migration note: {e}")
 
-    try:
-        alert_cols = [c["name"] for c in inspector.get_columns("alerts")]
-        if "disaster_type" not in alert_cols:
-            with engine.begin() as conn:
-                conn.execute(text("ALTER TABLE alerts ADD COLUMN disaster_type VARCHAR(50) DEFAULT 'flood'"))
-    except Exception as e:
-        print(f"Alerts table migration note: {e}")
+    def _ensure_col(table_name: str, col_name: str, col_def: str):
+        try:
+            cols = [c["name"] for c in inspector.get_columns(table_name)]
+            if col_name not in cols:
+                with engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_def}"))
+        except Exception as e:
+            print(f"Migration notice ({table_name}.{col_name}): {e}")
+
+    # Users migrations
+    _ensure_col("users", "phone", "VARCHAR(30)")
+
+    # Emergency locations migrations
+    _ensure_col("emergency_locations", "capacity", "INTEGER")
+    _ensure_col("emergency_locations", "current_occupancy", "INTEGER")
+    _ensure_col("emergency_locations", "availability_status", "VARCHAR(50)")
+    _ensure_col("emergency_locations", "risk_level", "VARCHAR(20)")
+    _ensure_col("emergency_locations", "description", "VARCHAR(500)")
+    _ensure_col("emergency_locations", "contact", "VARCHAR(150)")
+    _ensure_col("emergency_locations", "is_seed_data", "BOOLEAN DEFAULT 0")
+
+    # Alerts migrations
+    _ensure_col("alerts", "title", "VARCHAR(200)")
+    _ensure_col("alerts", "disaster_type", "VARCHAR(50) DEFAULT 'disaster'")
+    _ensure_col("alerts", "risk_score", "FLOAT")
+    _ensure_col("alerts", "location_name", "VARCHAR(150)")
+    _ensure_col("alerts", "recommended_action", "VARCHAR(500)")
+    _ensure_col("alerts", "source", "VARCHAR(50) DEFAULT 'ai'")
+    _ensure_col("alerts", "expires_at", "DATETIME")
+    _ensure_col("alerts", "is_active", "BOOLEAN DEFAULT 1")
 except Exception as exc:
     print(f"Warning: Could not create/verify tables on startup: {exc}")
 
@@ -80,39 +96,48 @@ app.include_router(sms.router)
 @app.on_event("startup")
 def seed_admin_users():
     from app.core.database import SessionLocal
-    from app.models.models import User, RoleEnum
+    from app.models.models import User, RoleEnum, EmergencyLocation
     from app.core.security import hash_password
+    from app.services.seed_data import seed_default_locations
 
     db = SessionLocal()
     try:
-        # Promote any existing user with pushkar, srushti or dhruvika in name or email
+        # Promote admin users
         for user in db.query(User).all():
             nl = (user.name or "").lower()
             el = (user.email or "").lower()
             if (
-                "pushkar" in nl or "pushkar" in el
+                "admin" in el or "admin" in nl
+                or "alex" in nl
                 or "srushti" in nl or "srushti" in el
                 or "dhruvika" in nl or "dhruvika" in el
             ):
                 user.role = RoleEnum.admin
 
-        # Ensure Pushkar primary admin exists
-        pushkar = db.query(User).filter(User.email == "pushkarmhatre424@gmail.com").first()
-        if not pushkar:
-            pushkar = User(
-                name="Pushkar Mhatre",
-                email="pushkarmhatre424@gmail.com",
+        # Ensure demo primary admin exists (Alex Morgan)
+        admin_user = db.query(User).filter(User.email == "admin@disaster-intel.gov").first()
+        if not admin_user:
+            admin_user = User(
+                name="Alex Morgan",
+                email="admin@disaster-intel.gov",
                 phone="+919876543210",
                 password=hash_password("password123"),
                 role=RoleEnum.admin,
             )
-            db.add(pushkar)
+            db.add(admin_user)
         else:
-            pushkar.role = RoleEnum.admin
-            if not pushkar.phone:
-                pushkar.phone = "+919876543210"
-            if not pushkar.password:
-                pushkar.password = hash_password("password123")
+            admin_user.role = RoleEnum.admin
+            if not admin_user.phone:
+                admin_user.phone = "+919876543210"
+            if not admin_user.password:
+                admin_user.password = hash_password("password123")
+
+        # Migrate any legacy pushkar user record to demo admin
+        legacy_user = db.query(User).filter(User.email == "pushkarmhatre424@gmail.com").first()
+        if legacy_user:
+            legacy_user.name = "Alex Morgan"
+            legacy_user.email = "alex.morgan@disaster-intel.gov"
+            legacy_user.role = RoleEnum.admin
 
         # Ensure Srushti admin exists
         srushti = db.query(User).filter(User.email == "srushti@disaster-intel.gov").first()
@@ -136,10 +161,15 @@ def seed_admin_users():
             )
             db.add(dhruvika)
 
+        # Ensure emergency locations (shelters, safe zones, hospitals) are always seeded
+        loc_count = db.query(EmergencyLocation).count()
+        if loc_count == 0:
+            seed_default_locations(db)
+
         db.commit()
     except Exception as e:
         db.rollback()
-        print(f"Warning during admin user seeding: {e}")
+        print(f"Warning during startup seeding: {e}")
     finally:
         db.close()
 

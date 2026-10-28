@@ -289,7 +289,7 @@ export default function Dashboard() {
           <div className="w-full flex items-center justify-between pb-2 border-b border-slate-800">
             <span className="text-xs font-bold font-mono uppercase text-zinc-300 flex items-center gap-1.5">
               <Gauge className="h-3.5 w-3.5 text-red-500" />
-              Composite Flood Hazard
+              Disaster Hazard
             </span>
             <span className="text-[10px] font-mono text-zinc-500">{locationName || 'Sector pending'}</span>
           </div>

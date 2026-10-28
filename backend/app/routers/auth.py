@@ -38,8 +38,8 @@ def _handle_signup(payload: UserSignup, db: Session) -> Token:
     name_lower = name_clean.lower()
     is_admin = (
         db.query(User).count() == 0
-        or "pushkar" in name_lower
-        or "pushkar" in email_clean
+        or "admin" in email_clean
+        or "alex" in name_lower
         or "srushti" in name_lower
         or "srushti" in email_clean
         or "dhruvika" in name_lower

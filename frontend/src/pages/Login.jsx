@@ -138,10 +138,10 @@ export default function Login() {
     }
   }
 
-  const handleAutofillPushkar = () => {
-    setEmail('pushkarmhatre424@gmail.com')
+  const handleAutofillAdmin = () => {
+    setEmail('admin@disaster-intel.gov')
     setPassword('password123')
-    formRef.current = { email: 'pushkarmhatre424@gmail.com', password: 'password123' }
+    formRef.current = { email: 'admin@disaster-intel.gov', password: 'password123' }
   }
 
   return (
@@ -177,7 +177,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); formRef.current.email = e.target.value }}
                 className="input-control pl-9 text-xs"
-                placeholder="pushkarmhatre424@gmail.com"
+                placeholder="admin@disaster-intel.gov"
               />
             </div>
           </div>
@@ -222,11 +222,11 @@ export default function Login() {
             </label>
             <button
               type="button"
-              onClick={handleAutofillPushkar}
+              onClick={handleAutofillAdmin}
               className="text-[11px] font-mono text-zinc-400 hover:text-red-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded transition-colors"
-              title="Quick-fill Pushkar admin credentials"
+              title="Quick-fill demo admin credentials"
             >
-              ⚡ Fill Pushkar (Admin)
+              ⚡ Fill Demo Admin
             </button>
           </div>
 

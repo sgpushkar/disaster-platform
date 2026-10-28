@@ -468,9 +468,34 @@ export default function MapView() {
             </>
           )}
 
-          {/* Emergency locations */}
+          {/* Emergency locations & safe zones */}
           {filtered.map((loc) => (
             <React.Fragment key={loc.id}>
+              {loc.type === 'safe_zone' && (
+                <Circle
+                  center={[loc.latitude, loc.longitude]}
+                  radius={750}
+                  pathOptions={{
+                    color: '#06b6d4',
+                    fillColor: '#06b6d4',
+                    fillOpacity: 0.18,
+                    weight: 2,
+                    dashArray: '5, 5',
+                  }}
+                />
+              )}
+              {loc.type === 'shelter' && (
+                <Circle
+                  center={[loc.latitude, loc.longitude]}
+                  radius={400}
+                  pathOptions={{
+                    color: '#10b981',
+                    fillColor: '#10b981',
+                    fillOpacity: 0.12,
+                    weight: 1.5,
+                  }}
+                />
+              )}
               <Marker
                 position={[loc.latitude, loc.longitude]}
                 icon={markerIcons[loc.type] || markerIcons.danger_zone}

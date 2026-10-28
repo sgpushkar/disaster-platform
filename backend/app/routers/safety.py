@@ -17,8 +17,9 @@ router = APIRouter(prefix="/safety", tags=["safety"])
 def get_nearby_safe_areas_endpoint(
     lat: float = Query(..., description="User latitude"),
     lon: float = Query(..., description="User longitude"),
-    radius_km: float = Query(default=10.0, ge=0.5, le=50.0),
+    radius_km: float = Query(default=15.0, ge=0.5, le=150.0),
     limit: int = Query(default=10, ge=1, le=50),
+    fallback: bool = Query(default=True, description="Provide closest regional refuges if none in radius"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -27,7 +28,7 @@ def get_nearby_safe_areas_endpoint(
     Does NOT simply return the closest — evaluates distance, destination risk,
     capacity, and route safety to recommend the safest option.
     """
-    results = get_nearby_safe_areas(db, lat, lon, radius_km=radius_km, limit=limit)
+    results = get_nearby_safe_areas(db, lat, lon, radius_km=radius_km, limit=limit, fallback_if_empty=fallback)
 
     safe_results = [
         SafeAreaResult(
