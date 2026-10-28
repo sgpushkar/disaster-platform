@@ -609,7 +609,7 @@ export default function Dashboard() {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-bold text-white">Disaster Intel — Android App</p>
-            <p className="text-[11px] text-zinc-500 truncate">Real-time alerts, GIS map &amp; offline access · APK v1.0.0 · 18.4 MB</p>
+            <p className="text-[11px] text-zinc-500 truncate">Real-time alerts, GIS map &amp; offline access · APK v1.2.0 · 12.9 MB</p>
           </div>
         </div>
         {deferredPrompt ? (

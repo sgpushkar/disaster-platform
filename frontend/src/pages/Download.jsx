@@ -7,8 +7,8 @@ import {
 } from 'lucide-react'
 
 const APK_URL = '/disaster-intel.apk'
-const APP_VERSION = '1.1.0'
-const APP_SIZE = '12.3 MB'
+const APP_VERSION = '1.2.0'
+const APP_SIZE = '12.9 MB'
 const MIN_ANDROID = 'Android 7.0+'
 
 const FEATURES = [
