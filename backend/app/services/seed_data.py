@@ -306,3 +306,4 @@ def seed_default_locations(db: Session) -> int:
     if inserted > 0:
         db.commit()
     return inserted
+
